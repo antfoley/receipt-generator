@@ -108,16 +108,90 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
 
 <script>
 let imageData = null;
+let processedImageData = null;
+
+// Function to fix image orientation
+function fixImageOrientation(file, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Get EXIF orientation
+      let orientation = 1;
+      try {
+        const exif = piexif.load(e.target.result);
+        if (exif && exif['0th'] && exif['0th'][piexif.ImageIFD.Orientation]) {
+          orientation = exif['0th'][piexif.ImageIFD.Orientation];
+        }
+      } catch (ex) {
+        // No EXIF data or error reading it
+      }
+      
+      // Set canvas size based on orientation
+      if (orientation >= 5 && orientation <= 8) {
+        canvas.width = img.height;
+        canvas.height = img.width;
+      } else {
+        canvas.width = img.width;
+        canvas.height = img.height;
+      }
+      
+      // Apply rotation based on orientation
+      switch (orientation) {
+        case 2:
+          ctx.transform(-1, 0, 0, 1, canvas.width, 0);
+          break;
+        case 3:
+          ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height);
+          break;
+        case 4:
+          ctx.transform(1, 0, 0, -1, 0, canvas.height);
+          break;
+        case 5:
+          ctx.transform(0, 1, 1, 0, 0, 0);
+          break;
+        case 6:
+          ctx.transform(0, 1, -1, 0, canvas.height, 0);
+          break;
+        case 7:
+          ctx.transform(0, -1, -1, 0, canvas.height, canvas.width);
+          break;
+        case 8:
+          ctx.transform(0, -1, 1, 0, 0, canvas.width);
+          break;
+        default:
+          // No rotation needed
+          break;
+      }
+      
+      // Draw the image
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+      
+      // Get the corrected image data
+      const correctedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      callback(correctedDataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
 // Handle image upload
 document.getElementById("imageInput").addEventListener("change", function(e){
   if (e.target.files && e.target.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(ev){
-      imageData = ev.target.result;
+    const file = e.target.files[0];
+    
+    // Fix image orientation and then process
+    fixImageOrientation(file, function(correctedImageData) {
+      imageData = correctedImageData;
+      processedImageData = correctedImageData;
       
       // Show image preview
       const imagePreview = document.getElementById("imagePreview");
@@ -127,8 +201,7 @@ document.getElementById("imageInput").addEventListener("change", function(e){
       imagePreview.src = imageData;
       imagePreviewContainer.classList.remove("hidden");
       imageUploadPrompt.classList.add("hidden");
-    };
-    reader.readAsDataURL(e.target.files[0]);
+    });
   }
 });
 
@@ -382,7 +455,7 @@ async function generatePDF(){
   yPos += Math.max(25, splitDesc.length * 4) + 10;
   
   // Add image if available
-  if(imageData){
+  if(processedImageData){
     // Another divider
     doc.setDrawColor(220, 220, 220);
     doc.setLineWidth(0.5);
@@ -399,7 +472,7 @@ async function generatePDF(){
     yPos += 5;
     // Add image
     try {
-      doc.addImage(imageData, 'JPEG', 20, yPos, 170, 80);
+      doc.addImage(processedImageData, 'JPEG', 20, yPos, 170, 80);
       yPos += 85;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
@@ -444,20 +517,97 @@ async function generatePDF(){
 
   const blob = doc.output("blob");
   const file = new File([blob], `receipt-${receiptNumber}.pdf`, { type: "application/pdf" });
+  
+  // Show sharing options
+  showSharingOptions(blob, receiptNumber, title, client);
+}
 
+function showSharingOptions(pdfBlob, receiptNumber, jobTitle, clientName) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-xl max-w-md w-full p-6">
+      <h3 class="text-xl font-bold text-gray-900 mb-4">Share Receipt</h3>
+      <p class="text-gray-600 mb-6">Choose how you'd like to share your professional receipt:</p>
+      
+      <div class="space-y-3">
+        <button onclick="shareViaEmail('${receiptNumber}', '${jobTitle}', '${clientName}')" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
+          📧 Share via Email
+        </button>
+        
+        <button onclick="downloadPDF()" 
+                class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
+          💾 Download PDF
+        </button>
+        
+        <button onclick="shareNative()" 
+                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center" 
+                style="display: ${navigator.canShare ? 'block' : 'none'}">
+          📱 Share via Apps
+        </button>
+      </div>
+      
+      <button onclick="closeSharingModal()" 
+              class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+        Cancel
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  window.currentPdfBlob = pdfBlob;
+  window.currentReceiptNumber = receiptNumber;
+  window.currentSharingModal = modal;
+}
+
+function shareViaEmail(receiptNumber, jobTitle, clientName) {
+  const subject = encodeURIComponent(`Work Receipt - ${jobTitle} for ${clientName}`);
+  const body = encodeURIComponent(`Dear ${clientName},\n\nPlease find attached the receipt for the completed work: ${jobTitle}\n\nReceipt Number: ${receiptNumber}\nDate: ${getCurrentDate()}\n\nThank you for your business!\n\nBest regards`);
+  
+  // Try to open default email client
+  const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+  window.open(mailtoLink);
+  
+  // Also download the PDF so user can attach it
+  downloadPDF();
+  
+  // Show instruction
+  setTimeout(() => {
+    alert('Your email client should open with a pre-filled message. Please attach the downloaded PDF file to complete the email.');
+  }, 1000);
+  
+  closeSharingModal();
+}
+
+function downloadPDF() {
+  const url = URL.createObjectURL(window.currentPdfBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `receipt-${window.currentReceiptNumber}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeSharingModal();
+}
+
+async function shareNative() {
+  const file = new File([window.currentPdfBlob], `receipt-${window.currentReceiptNumber}.pdf`, { type: "application/pdf" });
+  
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     await navigator.share({
       title: "Professional Work Receipt",
-      text: `Work receipt for ${client} - ${title}`,
+      text: `Work receipt for ${document.getElementById("client").value} - ${document.getElementById("title").value}`,
       files: [file]
     });
-  } else {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `receipt-${receiptNumber}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+  }
+  
+  closeSharingModal();
+}
+
+function closeSharingModal() {
+  if (window.currentSharingModal) {
+    document.body.removeChild(window.currentSharingModal);
+    window.currentSharingModal = null;
   }
 }
 
