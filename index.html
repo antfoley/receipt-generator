@@ -236,6 +236,7 @@
         let totalItems = 1;
         let items = [];
         let imageData = {};
+        let imageRotations = {}; // Track rotation for each image
 
         // Initialize the wizard
         document.addEventListener('DOMContentLoaded', function() {
@@ -411,7 +412,7 @@
                         <div class="file-input w-full">
                             <label for="imageInput-${itemIndex}" class="w-full bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4 text-center cursor-pointer hover:bg-blue-100 transition-colors block">
                                 <div id="imagePreviewContainer-${itemIndex}" class="hidden">
-                                    <img id="imagePreview-${itemIndex}" class="image-preview mx-auto mb-2">
+                                    <img id="imagePreview-${itemIndex}" class="image-preview mx-auto mb-2" style="transition: transform 0.3s ease;">
                                     <p class="text-sm text-gray-600">Click to change photo</p>
                                 </div>
                                 <div id="imageUploadPrompt-${itemIndex}">
@@ -422,6 +423,18 @@
                                 </div>
                             </label>
                             <input type="file" accept="image/*" capture="environment" id="imageInput-${itemIndex}">
+                        </div>
+                        
+                        <!-- Rotation Controls -->
+                        <div id="rotationControls-${itemIndex}" class="mt-2 flex justify-center space-x-2" style="display: none;">
+                            <button type="button" onclick="rotateImage(${itemIndex}, -1)" 
+                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-lg text-sm transition-colors">
+                                ↺ Rotate Left
+                            </button>
+                            <button type="button" onclick="rotateImage(${itemIndex}, 1)" 
+                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-lg text-sm transition-colors">
+                                ↻ Rotate Right
+                            </button>
                         </div>
                     </div>
                     
@@ -495,16 +508,67 @@
                 
                 fixImageOrientation(file, function(correctedImageData) {
                     imageData[index] = correctedImageData;
+                    imageRotations[index] = 0; // Initialize rotation
                     
                     const imagePreview = document.getElementById(`imagePreview-${index}`);
                     const imagePreviewContainer = document.getElementById(`imagePreviewContainer-${index}`);
                     const imageUploadPrompt = document.getElementById(`imageUploadPrompt-${index}`);
                     
                     imagePreview.src = correctedImageData;
+                    imagePreview.style.transform = 'rotate(0deg)';
                     imagePreviewContainer.classList.remove('hidden');
                     imageUploadPrompt.classList.add('hidden');
+                    
+                    // Show rotation controls
+                    const rotationControls = document.getElementById(`rotationControls-${index}`);
+                    if (rotationControls) {
+                        rotationControls.style.display = 'block';
+                    }
                 });
             }
+        }
+        
+        function rotateImage(index, direction) {
+            if (!imageData[index]) return;
+            
+            // Update rotation angle
+            imageRotations[index] = (imageRotations[index] + (direction * 90)) % 360;
+            
+            // Apply rotation to preview
+            const imagePreview = document.getElementById(`imagePreview-${index}`);
+            if (imagePreview) {
+                imagePreview.style.transform = `rotate(${imageRotations[index]}deg)`;
+            }
+            
+            // Create rotated image data
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                // Set canvas size based on rotation
+                if (imageRotations[index] % 180 === 90) {
+                    canvas.width = img.height;
+                    canvas.height = img.width;
+                } else {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                }
+                
+                // Save context and translate to center
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate((imageRotations[index] * Math.PI) / 180);
+                
+                // Draw image centered
+                ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                ctx.restore();
+                
+                // Update imageData with rotated version
+                imageData[index] = canvas.toDataURL('image/jpeg', 0.9);
+            };
+            
+            img.src = imageData[index];
         }
 
         // Image orientation fix function (same as before)
@@ -1146,10 +1210,9 @@
                             💾 Download PDF
                         </button>
                         
-                        <button onclick="shareNative()" 
-                                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center" 
-                                style="display: ${navigator.canShare ? 'block' : 'none'}">
-                            📱 Share via Apps
+                        <button onclick="shareViaWhatsApp('${receiptNumber}', '${jobTitle}', '${clientName}')" 
+                                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
+                            📱 Share via WhatsApp
                         </button>
                     </div>
                     
@@ -1192,15 +1255,28 @@
             closeSharingModal();
         }
 
-        async function shareNative() {
-            const file = new File([window.currentPdfBlob], `conservation-receipt-${window.currentReceiptNumber}.pdf`, { type: "application/pdf" });
+        function shareViaWhatsApp(receiptNumber, jobTitle, clientName) {
+            // Create WhatsApp message
+            const message = encodeURIComponent(
+                `Hi! I'm sending you a conservation receipt from The Paper Conservation Studio.\n\n` +
+                `Receipt Number: ${receiptNumber}\n` +
+                `Client: ${clientName}\n` +
+                `Date: ${document.getElementById('receiptDate').value}\n\n` +
+                `Please download the PDF attachment for the complete receipt.\n\n` +
+                `Best regards,\nThe Paper Conservation Studio`
+            );
             
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    title: "Conservation Receipt",
-                    files: [file]
-                });
-            }
+            // Download PDF first
+            downloadPDF();
+            
+            // Open WhatsApp with message
+            const whatsappUrl = `https://wa.me/?text=${message}`;
+            window.open(whatsappUrl, '_blank');
+            
+            // Show instruction
+            setTimeout(() => {
+                alert('WhatsApp should open with a pre-filled message. Please attach the downloaded PDF file to complete the message.');
+            }, 1000);
             
             closeSharingModal();
         }
