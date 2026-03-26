@@ -1,629 +1,1219 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Professional Work Receipt Generator</title>
-<meta name="description" content="Generate professional work receipts with photo documentation">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  .gradient-bg {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-  .file-input {
-    position: relative;
-    overflow: hidden;
-    display: inline-block;
-    cursor: pointer;
-  }
-  .file-input input[type=file] {
-    position: absolute;
-    left: -9999px;
-  }
-  .image-preview {
-    max-width: 200px;
-    max-height: 150px;
-    object-fit: cover;
-    border-radius: 8px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper Conservation Studio - Receipt Generator</title>
+    <meta name="description" content="Professional conservation receipt generator for The Paper Conservation Studio">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+        }
+        .step-indicator {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .step-active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .step-completed {
+            background-color: #10b981;
+            color: white;
+        }
+        .step-inactive {
+            background-color: #e5e7eb;
+            color: #6b7280;
+        }
+        .file-input {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .file-input input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .image-preview {
+            max-width: 150px;
+            max-height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .wizard-step {
+            display: none;
+        }
+        .wizard-step.active {
+            display: block;
+        }
+    </style>
 </head>
-
 <body class="bg-gray-50 min-h-screen">
 
-<div class="gradient-bg py-8">
-  <div class="max-w-lg mx-auto px-4">
-    <h1 class="text-3xl font-bold text-white text-center mb-2">Professional Receipt Generator</h1>
-    <p class="text-blue-100 text-center mb-8">Create professional work documentation with photo evidence</p>
-    
-    <div class="bg-white p-6 rounded-2xl shadow-xl">
-      <!-- Image Upload Section -->
-      <div class="mb-6">
-        <label class="block text-sm font-semibold text-gray-700 mb-2">📸 Work Photo Evidence</label>
-        <div class="file-input w-full">
-          <label for="imageInput" class="w-full bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4 text-center cursor-pointer hover:bg-blue-100 transition-colors block">
-            <div id="imagePreviewContainer" class="hidden">
-              <img id="imagePreview" class="image-preview mx-auto mb-2">
-              <p class="text-sm text-gray-600">Click to change photo</p>
+    <div class="gradient-bg py-6">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-white mb-2">The Paper Conservation Studio</h1>
+                <p class="text-blue-100">Professional Conservation Receipt Generator</p>
             </div>
-            <div id="imageUploadPrompt">
-              <svg class="mx-auto h-12 w-12 text-blue-400 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <p class="text-sm text-gray-600">Click to take or upload a photo</p>
+
+            <!-- Progress Indicator -->
+            <div class="flex justify-center mb-8">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <div id="step1-indicator" class="step-indicator step-active">1</div>
+                        <span class="ml-2 text-white text-sm hidden sm:inline">Receipt Info</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-blue-300"></div>
+                    <div class="flex items-center">
+                        <div id="step2-indicator" class="step-indicator step-inactive">2</div>
+                        <span class="ml-2 text-white text-sm hidden sm:inline">Client Details</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-blue-300"></div>
+                    <div class="flex items-center">
+                        <div id="step3-indicator" class="step-indicator step-inactive">3</div>
+                        <span class="ml-2 text-white text-sm hidden sm:inline">Items</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-blue-300"></div>
+                    <div class="flex items-center">
+                        <div id="step4-indicator" class="step-indicator step-inactive">4</div>
+                        <span class="ml-2 text-white text-sm hidden sm:inline">Review</span>
+                    </div>
+                </div>
             </div>
-          </label>
-          <input type="file" accept="image/*" capture="environment" id="imageInput">
         </div>
-      </div>
-
-      <!-- Form Fields -->
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Job Title *</label>
-          <input id="title" placeholder="e.g., Plumbing Repair, Website Design"
-            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Work Description *</label>
-          <textarea id="desc" placeholder="Detailed description of work completed..."
-            rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Client Name *</label>
-          <input id="client" placeholder="Client or company name"
-            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="mt-6 space-y-3">
-        <button onclick="previewReceipt()"
-          class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors">
-          📋 Preview Receipt
-        </button>
-
-        <button onclick="generatePDF()"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors">
-          📄 Generate & Share PDF
-        </button>
-      </div>
     </div>
-  </div>
-</div>
 
-<!-- Preview Modal -->
-<div id="preview" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-xl w-full max-w-2xl max-h-screen overflow-y-auto">
-    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-      <h2 class="text-xl font-bold text-gray-900">Receipt Preview</h2>
-      <button onclick="closePreview()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-        ✕ Close
-      </button>
+    <!-- Wizard Container -->
+    <div class="max-w-4xl mx-auto px-4 -mt-4">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            
+            <!-- Step 1: Receipt Info -->
+            <div id="step1" class="wizard-step active p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Receipt Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Receipt Number *</label>
+                        <input id="receiptNumber" type="number" placeholder="001" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Date *</label>
+                        <input id="receiptDate" type="date" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Number of Items</label>
+                        <input id="numberOfItems" type="number" value="1" min="1" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Receipt By</label>
+                        <input id="receiptBy" placeholder="Pat McBride" value="Pat McBride"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Telephone</label>
+                        <input id="receiptTelephone" type="tel" value="0862451318"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Client Details -->
+            <div id="step2" class="wizard-step p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Client Details</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Client Name *</label>
+                        <input id="clientName" placeholder="Client or company name"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Person</label>
+                        <input id="contactName" placeholder="Contact person name"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                        <input id="clientPhone" type="tel" placeholder="Phone number"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                        <input id="clientEmail" type="email" placeholder="email@example.com"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                        <textarea id="clientAddress" rows="3" placeholder="Full address"
+                                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Items -->
+            <div id="step3" class="wizard-step p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Conservation Items</h2>
+                    <button onclick="addItem()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                        + Add Item
+                    </button>
+                </div>
+                
+                <div id="itemsContainer">
+                    <!-- Items will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Step 4: Review -->
+            <div id="step4" class="wizard-step p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Review & Generate Receipt</h2>
+                
+                <div id="reviewContent" class="mb-6">
+                    <!-- Review content will be populated here -->
+                </div>
+                
+                <div class="flex space-x-4">
+                    <button onclick="generatePDF()" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors">
+                        📄 Generate PDF Receipt
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="border-t bg-gray-50 px-8 py-4 flex justify-between">
+                <button id="prevBtn" onclick="previousStep()" 
+                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold transition-colors" 
+                        style="display: none;">
+                    ← Previous
+                </button>
+                <button id="nextBtn" onclick="nextStep()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors ml-auto">
+                    Next →
+                </button>
+            </div>
+        </div>
     </div>
-    <div id="previewContent" class="p-6"></div>
-  </div>
-</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
+    <!-- Preview Modal -->
+    <div id="preview" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl w-full max-w-4xl max-h-screen overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900">Receipt Preview</h2>
+                <button onclick="closePreview()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                    ✕ Close
+                </button>
+            </div>
+            <div id="previewContent" class="p-6"></div>
+        </div>
+    </div>
 
-<script>
-let imageData = null;
-let processedImageData = null;
+    <script>
+        // Global variables
+        let currentStep = 1;
+        let totalItems = 1;
+        let items = [];
+        let imageData = {};
 
-// Function to fix image orientation
-function fixImageOrientation(file, callback) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Get EXIF orientation
-      let orientation = 1;
-      try {
-        const exif = piexif.load(e.target.result);
-        if (exif && exif['0th'] && exif['0th'][piexif.ImageIFD.Orientation]) {
-          orientation = exif['0th'][piexif.ImageIFD.Orientation];
+        // Initialize the wizard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default date to today
+            document.getElementById('receiptDate').value = new Date().toISOString().split('T')[0];
+            
+            // Generate initial receipt number
+            generateReceiptNumber();
+            
+            // Initialize with one item
+            addItem();
+            
+            // Listen for number of items changes
+            document.getElementById('numberOfItems').addEventListener('change', function() {
+                updateItemsBasedOnCount();
+            });
+        });
+
+        function generateReceiptNumber() {
+            // Generate a simple sequential number (you can make this more sophisticated)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const receipt = `${year}${month}${day}001`; // Basic format, you can enhance this
+            document.getElementById('receiptNumber').value = receipt;
         }
-      } catch (ex) {
-        // No EXIF data or error reading it
-      }
-      
-      // Set canvas size based on orientation
-      if (orientation >= 5 && orientation <= 8) {
-        canvas.width = img.height;
-        canvas.height = img.width;
-      } else {
-        canvas.width = img.width;
-        canvas.height = img.height;
-      }
-      
-      // Apply rotation based on orientation
-      switch (orientation) {
-        case 2:
-          ctx.transform(-1, 0, 0, 1, canvas.width, 0);
-          break;
-        case 3:
-          ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height);
-          break;
-        case 4:
-          ctx.transform(1, 0, 0, -1, 0, canvas.height);
-          break;
-        case 5:
-          ctx.transform(0, 1, 1, 0, 0, 0);
-          break;
-        case 6:
-          ctx.transform(0, 1, -1, 0, canvas.height, 0);
-          break;
-        case 7:
-          ctx.transform(0, -1, -1, 0, canvas.height, canvas.width);
-          break;
-        case 8:
-          ctx.transform(0, -1, 1, 0, 0, canvas.width);
-          break;
-        default:
-          // No rotation needed
-          break;
-      }
-      
-      // Draw the image
-      ctx.drawImage(img, 0, 0, img.width, img.height);
-      
-      // Get the corrected image data
-      const correctedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      callback(correctedDataUrl);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
 
-// Handle image upload
-document.getElementById("imageInput").addEventListener("change", function(e){
-  if (e.target.files && e.target.files[0]) {
-    const file = e.target.files[0];
-    
-    // Fix image orientation and then process
-    fixImageOrientation(file, function(correctedImageData) {
-      imageData = correctedImageData;
-      processedImageData = correctedImageData;
-      
-      // Show image preview
-      const imagePreview = document.getElementById("imagePreview");
-      const imagePreviewContainer = document.getElementById("imagePreviewContainer");
-      const imageUploadPrompt = document.getElementById("imageUploadPrompt");
-      
-      imagePreview.src = imageData;
-      imagePreviewContainer.classList.remove("hidden");
-      imageUploadPrompt.classList.add("hidden");
-    });
-  }
-});
+        // Wizard navigation
+        function nextStep() {
+            if (validateCurrentStep()) {
+                if (currentStep < 4) {
+                    hideStep(currentStep);
+                    currentStep++;
+                    showStep(currentStep);
+                    updateStepIndicators();
+                    updateNavigation();
+                    
+                    if (currentStep === 4) {
+                        populateReview();
+                    }
+                }
+            }
+        }
 
-function validateForm() {
-  const title = document.getElementById("title").value.trim();
-  const desc = document.getElementById("desc").value.trim();
-  const client = document.getElementById("client").value.trim();
-  
-  if (!title || !desc || !client) {
-    alert("Please fill in all required fields (marked with *)");
-    return false;
-  }
-  return true;
-}
+        function previousStep() {
+            if (currentStep > 1) {
+                hideStep(currentStep);
+                currentStep--;
+                showStep(currentStep);
+                updateStepIndicators();
+                updateNavigation();
+            }
+        }
 
-function generateReceiptNumber() {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substr(2, 5);
-  return `WR-${timestamp}-${random}`.toUpperCase();
-}
+        function showStep(step) {
+            document.getElementById(`step${step}`).classList.add('active');
+        }
 
-function getCurrentDate() {
-  const now = new Date();
-  return now.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-}
+        function hideStep(step) {
+            document.getElementById(`step${step}`).classList.remove('active');
+        }
 
-function createReceiptHTML() {
-  const title = document.getElementById("title").value.trim();
-  const desc = document.getElementById("desc").value.trim();
-  const client = document.getElementById("client").value.trim();
-  const receiptNumber = generateReceiptNumber();
-  const serviceDate = getCurrentDate();
-  
-  return `
-    <div class="max-w-2xl mx-auto bg-white rounded-lg overflow-hidden shadow-lg">
-      <!-- Header -->
-      <div class="bg-gradient-to-br from-blue-600 to-purple-700 text-white p-6">
-        <div class="flex justify-between items-start">
-          <div>
-            <h1 class="text-2xl font-bold">WORK RECEIPT</h1>
-            <p class="text-blue-100 mt-1">Professional Service Documentation</p>
-          </div>
-          <div class="text-right">
-            <div class="bg-white bg-opacity-20 rounded-lg p-3">
-              <p class="text-sm font-medium">Receipt #</p>
-              <p class="font-mono text-lg">${receiptNumber}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        function updateStepIndicators() {
+            for (let i = 1; i <= 4; i++) {
+                const indicator = document.getElementById(`step${i}-indicator`);
+                indicator.classList.remove('step-active', 'step-completed', 'step-inactive');
+                
+                if (i < currentStep) {
+                    indicator.classList.add('step-completed');
+                } else if (i === currentStep) {
+                    indicator.classList.add('step-active');
+                } else {
+                    indicator.classList.add('step-inactive');
+                }
+            }
+        }
 
-      <!-- Content -->
-      <div class="p-6">
-        <!-- Service Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div class="space-y-3">
-            <div>
-              <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Service Date</label>
-              <p class="text-lg font-semibold text-gray-900">${serviceDate}</p>
-            </div>
-            <div>
-              <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Client Name</label>
-              <p class="text-lg font-semibold text-gray-900">${client}</p>
-            </div>
-          </div>
-          <div class="space-y-3">
-            <div>
-              <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Service Provider</label>
-              <p class="text-lg font-semibold text-gray-900">Professional Services</p>
-            </div>
-            <div>
-              <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Status</label>
-              <span class="inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">Completed</span>
-            </div>
-          </div>
-        </div>
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (currentStep === 1) {
+                prevBtn.style.display = 'none';
+            } else {
+                prevBtn.style.display = 'block';
+            }
+            
+            if (currentStep === 4) {
+                nextBtn.style.display = 'none';
+            } else {
+                nextBtn.style.display = 'block';
+            }
+        }
 
-        <div style="border-top: 2px dashed #e5e7eb; margin: 1rem 0;"></div>
+        // Items management
+        function updateItemsBasedOnCount() {
+            const count = parseInt(document.getElementById('numberOfItems').value) || 1;
+            const container = document.getElementById('itemsContainer');
+            
+            // Clear existing items
+            container.innerHTML = '';
+            items = [];
+            
+            // Add the required number of items
+            for (let i = 0; i < count; i++) {
+                addItem();
+            }
+        }
 
-        <!-- Service Details -->
-        <div class="mb-6">
-          <label class="text-sm font-medium text-gray-600 uppercase tracking-wide block mb-2">Service Title</label>
-          <h2 class="text-xl font-bold text-gray-900 mb-4">${title}</h2>
-          
-          <label class="text-sm font-medium text-gray-600 uppercase tracking-wide block mb-2">Work Description</label>
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <p class="text-gray-700 leading-relaxed">${desc}</p>
-          </div>
-        </div>
+        function addItem() {
+            const container = document.getElementById('itemsContainer');
+            const itemIndex = items.length;
+            const receiptNumber = document.getElementById('receiptNumber').value;
+            const objectNumber = receiptNumber + String.fromCharCode(65 + itemIndex); // A, B, C...
+            
+            const itemHTML = `
+                <div class="border border-gray-200 rounded-lg p-6 mb-6" id="item-${itemIndex}">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Item ${itemIndex + 1} - ${objectNumber}</h3>
+                        <button onclick="removeItem(${itemIndex})" class="text-red-600 hover:text-red-800 font-semibold">
+                            Remove
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Artist</label>
+                            <input id="artist-${itemIndex}" placeholder="Artist name"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+                            <input id="title-${itemIndex}" placeholder="Artwork title"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Image Type</label>
+                            <input id="imageType-${itemIndex}" placeholder="e.g., Photograph, Painting"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Media</label>
+                            <input id="media-${itemIndex}" placeholder="e.g., Oil on canvas, Watercolor"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Size</label>
+                            <input id="size-${itemIndex}" placeholder="Dimensions"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="framed-${itemIndex}" class="mr-2">
+                                <span class="text-sm font-semibold text-gray-700">Framed</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4" id="frameType-container-${itemIndex}" style="display: none;">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Frame Type</label>
+                        <input id="frameType-${itemIndex}" placeholder="Describe the frame"
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Image</label>
+                        <div class="file-input w-full">
+                            <label for="imageInput-${itemIndex}" class="w-full bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4 text-center cursor-pointer hover:bg-blue-100 transition-colors block">
+                                <div id="imagePreviewContainer-${itemIndex}" class="hidden">
+                                    <img id="imagePreview-${itemIndex}" class="image-preview mx-auto mb-2">
+                                    <p class="text-sm text-gray-600">Click to change photo</p>
+                                </div>
+                                <div id="imageUploadPrompt-${itemIndex}">
+                                    <svg class="mx-auto h-8 w-8 text-blue-400 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <p class="text-sm text-gray-600">Click to upload image</p>
+                                </div>
+                            </label>
+                            <input type="file" accept="image/*" capture="environment" id="imageInput-${itemIndex}">
+                        </div>
+                    </div>
+                    
+                    <!-- Agreed Next Steps -->
+                    <div class="border-t pt-4">
+                        <h4 class="font-semibold text-gray-900 mb-3">Agreed Next Steps</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-start">
+                                <input type="checkbox" id="assess-${itemIndex}" class="mr-2 mt-1">
+                                <span class="text-sm text-gray-700">To assess the work and to provide a condition and proposed treatment report and full costing of the same</span>
+                            </label>
+                            <label class="flex items-start">
+                                <input type="checkbox" id="conserve-${itemIndex}" class="mr-2 mt-1">
+                                <span class="text-sm text-gray-700">To conserve the work at an agreed price</span>
+                            </label>
+                            <label class="flex items-start">
+                                <input type="checkbox" id="mount-${itemIndex}" class="mr-2 mt-1">
+                                <span class="text-sm text-gray-700">To mount the work to an agreed cost</span>
+                            </label>
+                            <label class="flex items-start">
+                                <input type="checkbox" id="materials-${itemIndex}" class="mr-2 mt-1">
+                                <span class="text-sm text-gray-700">Agreed cost of materials</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', itemHTML);
+            
+            // Add event listeners
+            document.getElementById(`framed-${itemIndex}`).addEventListener('change', function() {
+                toggleFrameType(itemIndex);
+            });
+            
+            document.getElementById(`imageInput-${itemIndex}`).addEventListener('change', function(e) {
+                handleImageUpload(e, itemIndex);
+            });
+            
+            // Add to items array
+            items.push({
+                index: itemIndex,
+                objectNumber: objectNumber
+            });
+        }
 
-        ${imageData ? `
-        <div class="mb-6">
-          <div style="border-top: 2px dashed #e5e7eb; margin: 1rem 0;"></div>
-          <label class="text-sm font-medium text-gray-600 uppercase tracking-wide block mb-3">Photographic Evidence</label>
-          <div class="bg-gray-50 p-4 rounded-lg text-center">
-            <img src="${imageData}" alt="Work Evidence" class="max-w-full max-h-80 object-contain mx-auto rounded-lg shadow-md">
-            <p class="text-xs text-gray-500 mt-2">Documentation of completed work</p>
-          </div>
-        </div>
-        ` : ''}
+        function removeItem(index) {
+            if (items.length > 1) {
+                document.getElementById(`item-${index}`).remove();
+                items = items.filter(item => item.index !== index);
+                
+                // Update number of items
+                document.getElementById('numberOfItems').value = items.length;
+            }
+        }
 
-        <div style="border-top: 2px dashed #e5e7eb; margin: 1rem 0;"></div>
+        function toggleFrameType(index) {
+            const checkbox = document.getElementById(`framed-${index}`);
+            const frameTypeContainer = document.getElementById(`frameType-container-${index}`);
+            
+            if (checkbox.checked) {
+                frameTypeContainer.style.display = 'block';
+            } else {
+                frameTypeContainer.style.display = 'none';
+            }
+        }
 
-        <!-- Footer -->
-        <div class="text-center pt-4">
-          <p class="text-sm text-gray-500 mb-2">Thank you for choosing our professional services</p>
-          <div class="flex justify-center space-x-4 text-xs text-gray-400">
-            <span>Quality • Reliability • Excellence</span>
-          </div>
-          <div class="mt-4 pt-4 border-t border-gray-200">
-            <p class="text-xs text-gray-400">
-              This receipt serves as proof of service completion and quality assurance.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
+        function handleImageUpload(e, index) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                
+                fixImageOrientation(file, function(correctedImageData) {
+                    imageData[index] = correctedImageData;
+                    
+                    const imagePreview = document.getElementById(`imagePreview-${index}`);
+                    const imagePreviewContainer = document.getElementById(`imagePreviewContainer-${index}`);
+                    const imageUploadPrompt = document.getElementById(`imageUploadPrompt-${index}`);
+                    
+                    imagePreview.src = correctedImageData;
+                    imagePreviewContainer.classList.remove('hidden');
+                    imageUploadPrompt.classList.add('hidden');
+                });
+            }
+        }
 
-function previewReceipt(){
-  if (!validateForm()) {
-    return;
-  }
+        // Image orientation fix function (same as before)
+        function fixImageOrientation(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    let orientation = 1;
+                    try {
+                        const exif = piexif.load(e.target.result);
+                        if (exif && exif['0th'] && exif['0th'][piexif.ImageIFD.Orientation]) {
+                            orientation = exif['0th'][piexif.ImageIFD.Orientation];
+                        }
+                    } catch (ex) {
+                        // No EXIF data
+                    }
+                    
+                    if (orientation >= 5 && orientation <= 8) {
+                        canvas.width = img.height;
+                        canvas.height = img.width;
+                    } else {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                    }
+                    
+                    switch (orientation) {
+                        case 2: ctx.transform(-1, 0, 0, 1, canvas.width, 0); break;
+                        case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
+                        case 4: ctx.transform(1, 0, 0, -1, 0, canvas.height); break;
+                        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+                        case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
+                        case 7: ctx.transform(0, -1, -1, 0, canvas.height, canvas.width); break;
+                        case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
+                    }
+                    
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+                    const correctedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                    callback(correctedDataUrl);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
 
-  document.getElementById("previewContent").innerHTML = createReceiptHTML();
-  document.getElementById("preview").classList.remove("hidden");
-}
+        // Validation functions
+        function validateCurrentStep() {
+            switch (currentStep) {
+                case 1:
+                    return validateStep1();
+                case 2:
+                    return validateStep2();
+                case 3:
+                    return validateStep3();
+                default:
+                    return true;
+            }
+        }
 
-function closePreview(){
-  document.getElementById("preview").classList.add("hidden");
-}
+        function validateStep1() {
+            const receiptNumber = document.getElementById('receiptNumber').value.trim();
+            const receiptDate = document.getElementById('receiptDate').value;
+            
+            if (!receiptNumber || !receiptDate) {
+                alert('Please fill in the receipt number and date.');
+                return false;
+            }
+            return true;
+        }
 
-async function generatePDF(){
-  if (!validateForm()) {
-    return;
-  }
+        function validateStep2() {
+            const clientName = document.getElementById('clientName').value.trim();
+            
+            if (!clientName) {
+                alert('Please enter the client name.');
+                return false;
+            }
+            return true;
+        }
 
-  const { jsPDF } = window.jspdf;
-  const title = document.getElementById("title").value.trim();
-  const desc = document.getElementById("desc").value.trim();
-  const client = document.getElementById("client").value.trim();
-  const receiptNumber = generateReceiptNumber();
-  const serviceDate = getCurrentDate();
+        function validateStep3() {
+            // Basic validation - at least one item should have some content
+            return true; // For now, allow proceeding
+        }
 
-  const doc = new jsPDF();
-  
-  // Set up fonts and colors
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(40, 40, 40);
-  
-  // Header
-  doc.text("WORK RECEIPT", 20, 25);
-  
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
-  doc.text("Professional Service Documentation", 20, 32);
-  
-  // Receipt number box
-  doc.setDrawColor(200, 200, 200);
-  doc.setFillColor(245, 245, 245);
-  doc.roundedRect(140, 15, 50, 20, 3, 3, 'FD');
-  doc.setTextColor(60, 60, 60);
-  doc.setFontSize(8);
-  doc.text("Receipt #", 145, 22);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text(receiptNumber, 145, 28);
-  
-  // Service information
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  
-  let yPos = 50;
-  
-  // Left column
-  doc.text("SERVICE DATE", 20, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(40, 40, 40);
-  doc.text(serviceDate, 20, yPos + 6);
-  
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(80, 80, 80);
-  doc.text("CLIENT NAME", 20, yPos + 20);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(40, 40, 40);
-  doc.text(client, 20, yPos + 26);
-  
-  // Right column
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(80, 80, 80);
-  doc.text("SERVICE PROVIDER", 110, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(40, 40, 40);
-  doc.text("Professional Services", 110, yPos + 6);
-  
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(80, 80, 80);
-  doc.text("STATUS", 110, yPos + 20);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(34, 197, 94);
-  doc.text("Completed", 110, yPos + 26);
-  
-  // Divider line
-  yPos += 40;
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.5);
-  for (let x = 20; x < 190; x += 3) {
-    doc.line(x, yPos, x + 1.5, yPos);
-  }
-  
-  // Service details
-  yPos += 15;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.text("SERVICE TITLE", 20, yPos);
-  
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.setTextColor(40, 40, 40);
-  yPos += 8;
-  doc.text(title, 20, yPos);
-  
-  yPos += 15;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.text("WORK DESCRIPTION", 20, yPos);
-  
-  // Description box
-  yPos += 5;
-  doc.setFillColor(248, 248, 248);
-  doc.setDrawColor(230, 230, 230);
-  doc.roundedRect(20, yPos, 170, 25, 2, 2, 'FD');
-  
-  yPos += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(60, 60, 60);
-  const splitDesc = doc.splitTextToSize(desc, 160);
-  doc.text(splitDesc, 25, yPos);
-  
-  yPos += Math.max(25, splitDesc.length * 4) + 10;
-  
-  // Add image if available
-  if(processedImageData){
-    // Another divider
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.5);
-    for (let x = 20; x < 190; x += 3) {
-      doc.line(x, yPos, x + 1.5, yPos);
-    }
-    
-    yPos += 15;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(80, 80, 80);
-    doc.text("PHOTOGRAPHIC EVIDENCE", 20, yPos);
-    
-    yPos += 5;
-    // Add image
-    try {
-      doc.addImage(processedImageData, 'JPEG', 20, yPos, 170, 80);
-      yPos += 85;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 120);
-      doc.text("Documentation of completed work", 20, yPos);
-      yPos += 10;
-    } catch (e) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(120, 120, 120);
-      doc.text("Image could not be added to PDF", 20, yPos);
-      yPos += 10;
-    }
-  }
-  
-  // Final divider
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.5);
-  for (let x = 20; x < 190; x += 3) {
-    doc.line(x, yPos, x + 1.5, yPos);
-  }
-  
-  // Footer
-  yPos += 15;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(120, 120, 120);
-  const footerText = "Thank you for choosing our professional services";
-  const footerWidth = doc.getTextWidth(footerText);
-  doc.text(footerText, (210 - footerWidth) / 2, yPos);
-  
-  yPos += 8;
-  const qualityText = "Quality • Reliability • Excellence";
-  const qualityWidth = doc.getTextWidth(qualityText);
-  doc.text(qualityText, (210 - qualityWidth) / 2, yPos);
-  
-  yPos += 12;
-  doc.setFontSize(7);
-  const disclaimerText = "This receipt serves as proof of service completion and quality assurance.";
-  const disclaimerWidth = doc.getTextWidth(disclaimerText);
-  doc.text(disclaimerText, (210 - disclaimerWidth) / 2, yPos);
-
-  const blob = doc.output("blob");
-  const file = new File([blob], `receipt-${receiptNumber}.pdf`, { type: "application/pdf" });
-  
-  // Show sharing options
-  showSharingOptions(blob, receiptNumber, title, client);
-}
-
-function showSharingOptions(pdfBlob, receiptNumber, jobTitle, clientName) {
-  const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
-  modal.innerHTML = `
-    <div class="bg-white rounded-xl max-w-md w-full p-6">
-      <h3 class="text-xl font-bold text-gray-900 mb-4">Share Receipt</h3>
-      <p class="text-gray-600 mb-6">Choose how you'd like to share your professional receipt:</p>
-      
-      <div class="space-y-3">
-        <button onclick="shareViaEmail('${receiptNumber}', '${jobTitle}', '${clientName}')" 
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
-          📧 Share via Email
-        </button>
+        // Review and generation functions
+        async function populateReview() {
+            const reviewContent = document.getElementById('reviewContent');
+            const receiptData = collectFormData();
+            
+            // Load and populate the template
+            try {
+                const templateResponse = await fetch('receipt_template.html');
+                const templateHTML = await templateResponse.text();
+                
+                // Create a temporary container to work with the template
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = templateHTML;
+                
+                // Find the receipt container in the template
+                const receiptContainer = tempDiv.querySelector('.receipt-container');
+                
+                if (receiptContainer) {
+                    // Add template styles to the review
+                    const templateStyles = tempDiv.querySelector('style');
+                    if (templateStyles && !document.getElementById('template-styles')) {
+                        const styleElement = document.createElement('style');
+                        styleElement.id = 'template-styles';
+                        styleElement.textContent = templateStyles.textContent;
+                        document.head.appendChild(styleElement);
+                    }
+                    
+                    reviewContent.innerHTML = receiptContainer.outerHTML;
+                    
+                    // Populate the template with data
+                    populateTemplateInReview(receiptData);
+                } else {
+                    // Fallback to simple review
+                    reviewContent.innerHTML = createSimpleReview(receiptData);
+                }
+            } catch (error) {
+                console.error('Error loading template:', error);
+                // Fallback to simple review
+                reviewContent.innerHTML = createSimpleReview(receiptData);
+            }
+        }
         
-        <button onclick="downloadPDF()" 
-                class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
-          💾 Download PDF
-        </button>
+        function populateTemplateInReview(data) {
+            // Populate basic info
+            const receiptNumber = document.querySelector('#reviewContent #receiptNumber');
+            const receiptDate = document.querySelector('#reviewContent #receiptDate');
+            const receiptBy = document.querySelector('#reviewContent #receiptBy');
+            const receiptTelephone = document.querySelector('#reviewContent #receiptTelephone');
+            const clientName = document.querySelector('#reviewContent #clientName');
+            
+            if (receiptNumber) receiptNumber.textContent = data.receiptNumber || '[Receipt Number]';
+            if (receiptDate) receiptDate.textContent = data.receiptDate || '[Date]';
+            if (receiptBy) receiptBy.textContent = data.receiptBy || '[Receipt By]';
+            if (receiptTelephone) receiptTelephone.textContent = data.receiptTelephone || '[Telephone]';
+            if (clientName) clientName.textContent = data.clientName || '[Client Name]';
+            
+            // Handle optional client fields
+            toggleReviewSection('contactSection', data.contactName, 'contactName');
+            toggleReviewSection('phoneSection', data.clientPhone, 'clientPhone');
+            toggleReviewSection('emailSection', data.clientEmail, 'clientEmail');
+            toggleReviewSection('addressSection', data.clientAddress, 'clientAddress');
+            
+            // Populate items
+            populateReviewItems(data.items || []);
+        }
         
-        <button onclick="shareNative()" 
-                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center" 
-                style="display: ${navigator.canShare ? 'block' : 'none'}">
-          📱 Share via Apps
-        </button>
-      </div>
-      
-      <button onclick="closeSharingModal()" 
-              class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors">
-        Cancel
-      </button>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  window.currentPdfBlob = pdfBlob;
-  window.currentReceiptNumber = receiptNumber;
-  window.currentSharingModal = modal;
-}
+        function toggleReviewSection(sectionId, value, elementId) {
+            const section = document.querySelector(`#reviewContent #${sectionId}`);
+            const element = document.querySelector(`#reviewContent #${elementId}`);
+            
+            if (section && value && value.trim()) {
+                section.style.display = 'block';
+                if (element) {
+                    if (element.tagName === 'P') {
+                        element.textContent = value;
+                    } else {
+                        element.innerHTML = `<p class="text-gray-700 leading-relaxed">${value}</p>`;
+                    }
+                }
+            } else if (section) {
+                section.style.display = 'none';
+            }
+        }
+        
+        function populateReviewItems(items) {
+            const container = document.querySelector('#reviewContent #itemsContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const itemHTML = createReviewItemHTML(item, index);
+                container.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+        
+        function createReviewItemHTML(item, index) {
+            return `
+                <div class="item-container">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-semibold text-gray-900">${item.objectNumber || 'Item ' + (index + 1)}</h3>
+                            <p class="text-xl font-bold text-gray-800 mt-1">${item.title || 'Untitled'}</p>
+                            ${item.artist ? `<p class="text-gray-600">by ${item.artist}</p>` : ''}
+                        </div>
+                        ${item.imageData ? `
+                            <div class="ml-4 flex-shrink-0">
+                                <img src="${item.imageData}" alt="Item image" class="receipt-image">
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        ${item.imageType ? `
+                            <div>
+                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Image Type</label>
+                                <p class="text-gray-800">${item.imageType}</p>
+                            </div>
+                        ` : ''}
+                        ${item.media ? `
+                            <div>
+                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Media</label>
+                                <p class="text-gray-800">${item.media}</p>
+                            </div>
+                        ` : ''}
+                        ${item.size ? `
+                            <div>
+                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Size</label>
+                                <p class="text-gray-800">${item.size}</p>
+                            </div>
+                        ` : ''}
+                        ${item.framed ? `
+                            <div>
+                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Frame</label>
+                                <p class="text-gray-800">Framed${item.frameType ? ` - ${item.frameType}` : ''}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${hasReviewAgreedSteps(item) ? `
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-900 mb-3">Agreed Next Steps</h4>
+                            <div class="checkbox-list">
+                                ${item.assess ? `
+                                    <div class="checkbox-item">
+                                        <div class="checkbox-mark checked"></div>
+                                        <span class="text-sm text-gray-700">To assess the work and to provide a condition and proposed treatment report and full costing of the same</span>
+                                    </div>
+                                ` : ''}
+                                ${item.conserve ? `
+                                    <div class="checkbox-item">
+                                        <div class="checkbox-mark checked"></div>
+                                        <span class="text-sm text-gray-700">To conserve the work at an agreed price</span>
+                                    </div>
+                                ` : ''}
+                                ${item.mount ? `
+                                    <div class="checkbox-item">
+                                        <div class="checkbox-mark checked"></div>
+                                        <span class="text-sm text-gray-700">To mount the work to an agreed cost</span>
+                                    </div>
+                                ` : ''}
+                                ${item.materials ? `
+                                    <div class="checkbox-item">
+                                        <div class="checkbox-mark checked"></div>
+                                        <span class="text-sm text-gray-700">Agreed cost of materials</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        function hasReviewAgreedSteps(item) {
+            return item.assess || item.conserve || item.mount || item.materials;
+        }
+        
+        function createSimpleReview(receiptData) {
+            let reviewHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Receipt Number:</h3>
+                            <p class="text-gray-700">${receiptData.receiptNumber}</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Date:</h3>
+                            <p class="text-gray-700">${receiptData.receiptDate}</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Client:</h3>
+                            <p class="text-gray-700">${receiptData.clientName}</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Number of Items:</h3>
+                            <p class="text-gray-700">${receiptData.numberOfItems}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Items:</h3>
+                        <div class="space-y-4">
+            `;
+            
+            receiptData.items.forEach((item, index) => {
+                reviewHTML += `
+                    <div class="border border-gray-200 rounded p-4">
+                        <h4 class="font-medium">${item.objectNumber} - ${item.title || 'Untitled'}</h4>
+                        <p class="text-sm text-gray-600">Artist: ${item.artist || 'Unknown'}</p>
+                        <p class="text-sm text-gray-600">Media: ${item.media || 'Not specified'}</p>
+                        ${item.imageData ? '<p class="text-sm text-green-600">✓ Image attached</p>' : ''}
+                    </div>
+                `;
+            });
+            
+            reviewHTML += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return reviewHTML;
+        }
 
-function shareViaEmail(receiptNumber, jobTitle, clientName) {
-  const subject = encodeURIComponent(`Work Receipt - ${jobTitle} for ${clientName}`);
-  const body = encodeURIComponent(`Dear ${clientName},\n\nPlease find attached the receipt for the completed work: ${jobTitle}\n\nReceipt Number: ${receiptNumber}\nDate: ${getCurrentDate()}\n\nThank you for your business!\n\nBest regards`);
-  
-  // Try to open default email client
-  const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
-  window.open(mailtoLink);
-  
-  // Also download the PDF so user can attach it
-  downloadPDF();
-  
-  // Show instruction
-  setTimeout(() => {
-    alert('Your email client should open with a pre-filled message. Please attach the downloaded PDF file to complete the email.');
-  }, 1000);
-  
-  closeSharingModal();
-}
+        function collectFormData() {
+            const data = {
+                receiptNumber: document.getElementById('receiptNumber').value,
+                receiptDate: document.getElementById('receiptDate').value,
+                numberOfItems: document.getElementById('numberOfItems').value,
+                receiptBy: document.getElementById('receiptBy').value,
+                receiptTelephone: document.getElementById('receiptTelephone').value,
+                clientName: document.getElementById('clientName').value,
+                contactName: document.getElementById('contactName').value,
+                clientPhone: document.getElementById('clientPhone').value,
+                clientEmail: document.getElementById('clientEmail').value,
+                clientAddress: document.getElementById('clientAddress').value,
+                items: []
+            };
+            
+            items.forEach((item, index) => {
+                const itemIndex = item.index;
+                data.items.push({
+                    objectNumber: item.objectNumber,
+                    artist: document.getElementById(`artist-${itemIndex}`)?.value || '',
+                    title: document.getElementById(`title-${itemIndex}`)?.value || '',
+                    imageType: document.getElementById(`imageType-${itemIndex}`)?.value || '',
+                    media: document.getElementById(`media-${itemIndex}`)?.value || '',
+                    size: document.getElementById(`size-${itemIndex}`)?.value || '',
+                    framed: document.getElementById(`framed-${itemIndex}`)?.checked || false,
+                    frameType: document.getElementById(`frameType-${itemIndex}`)?.value || '',
+                    assess: document.getElementById(`assess-${itemIndex}`)?.checked || false,
+                    conserve: document.getElementById(`conserve-${itemIndex}`)?.checked || false,
+                    mount: document.getElementById(`mount-${itemIndex}`)?.checked || false,
+                    materials: document.getElementById(`materials-${itemIndex}`)?.checked || false,
+                    imageData: imageData[itemIndex] || null
+                });
+            });
+            
+            return data;
+        }
 
-function downloadPDF() {
-  const url = URL.createObjectURL(window.currentPdfBlob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `receipt-${window.currentReceiptNumber}.pdf`;
-  a.click();
-  URL.revokeObjectURL(url);
-  closeSharingModal();
-}
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const data = collectFormData();
+            
+            // Create PDF with template-based layout
+            const doc = new jsPDF();
+            let yPos = 20;
+            
+            // Header - The Paper Conservation Studio
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.setTextColor(30, 58, 138); // Blue color matching template
+            doc.text("The Paper Conservation Studio", 20, yPos);
+            yPos += 8;
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(60, 60, 60);
+            doc.text("Conservation Receipt", 20, yPos);
+            
+            // Receipt number box (matching template design)
+            doc.setDrawColor(200, 200, 200);
+            doc.setFillColor(245, 245, 245);
+            doc.roundedRect(140, 12, 50, 18, 3, 3, 'FD');
+            doc.setTextColor(60, 60, 60);
+            doc.setFontSize(8);
+            doc.text("Receipt #", 145, 18);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text(data.receiptNumber, 145, 25);
+            
+            yPos += 20;
+            
+            // Basic info grid
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(80, 80, 80);
+            
+            // Row 1
+            doc.text("DATE", 20, yPos);
+            doc.text("RECEIPT BY", 80, yPos);
+            doc.text("TELEPHONE", 140, yPos);
+            
+            yPos += 6;
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(40, 40, 40);
+            doc.text(data.receiptDate, 20, yPos);
+            doc.text(data.receiptBy, 80, yPos);
+            doc.text(data.receiptTelephone, 140, yPos);
+            
+            yPos += 15;
+            
+            // Divider line (dashed)
+            doc.setDrawColor(220, 220, 220);
+            doc.setLineWidth(0.5);
+            for (let x = 20; x < 190; x += 3) {
+                doc.line(x, yPos, x + 1.5, yPos);
+            }
+            yPos += 10;
+            
+            // Client Information section
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(40, 40, 40);
+            doc.text("Client Information", 20, yPos);
+            yPos += 10;
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(80, 80, 80);
+            doc.text("CLIENT NAME", 20, yPos);
+            yPos += 6;
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(40, 40, 40);
+            doc.text(data.clientName, 20, yPos);
+            yPos += 8;
+            
+            // Optional client fields
+            if (data.contactName) {
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(80, 80, 80);
+                doc.text("CONTACT PERSON", 20, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(40, 40, 40);
+                doc.text(data.contactName, 20, yPos);
+                yPos += 8;
+            }
+            
+            if (data.clientPhone) {
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(80, 80, 80);
+                doc.text("PHONE", 20, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(40, 40, 40);
+                doc.text(data.clientPhone, 20, yPos);
+                yPos += 8;
+            }
+            
+            if (data.clientEmail) {
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(80, 80, 80);
+                doc.text("EMAIL", 20, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(40, 40, 40);
+                doc.text(data.clientEmail, 20, yPos);
+                yPos += 8;
+            }
+            
+            if (data.clientAddress) {
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(80, 80, 80);
+                doc.text("ADDRESS", 20, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(40, 40, 40);
+                const addressLines = doc.splitTextToSize(data.clientAddress, 170);
+                doc.text(addressLines, 20, yPos);
+                yPos += addressLines.length * 4 + 4;
+            }
+            
+            yPos += 5;
+            
+            // Another divider
+            for (let x = 20; x < 190; x += 3) {
+                doc.line(x, yPos, x + 1.5, yPos);
+            }
+            yPos += 10;
+            
+            // Items section
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(40, 40, 40);
+            doc.text("Conservation Items", 20, yPos);
+            yPos += 10;
+            
+            data.items.forEach((item, index) => {
+                // Check if we need a new page
+                if (yPos > 240) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                // Item header
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(40, 40, 40);
+                doc.text(`${item.objectNumber}: ${item.title || 'Untitled'}`, 20, yPos);
+                yPos += 8;
+                
+                if (item.artist) {
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`by ${item.artist}`, 20, yPos);
+                    yPos += 6;
+                }
+                
+                // Item details in grid format
+                const startY = yPos;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(60, 60, 60);
+                
+                let leftCol = 25;
+                let rightCol = 110;
+                let currentLeftY = startY;
+                let currentRightY = startY;
+                
+                if (item.imageType) {
+                    doc.text(`Image Type: ${item.imageType}`, leftCol, currentLeftY);
+                    currentLeftY += 5;
+                }
+                if (item.media) {
+                    doc.text(`Media: ${item.media}`, leftCol, currentLeftY);
+                    currentLeftY += 5;
+                }
+                if (item.size) {
+                    doc.text(`Size: ${item.size}`, rightCol, currentRightY);
+                    currentRightY += 5;
+                }
+                if (item.framed) {
+                    const frameText = `Frame: Framed${item.frameType ? ` - ${item.frameType}` : ''}`;
+                    doc.text(frameText, rightCol, currentRightY);
+                    currentRightY += 5;
+                }
+                
+                yPos = Math.max(currentLeftY, currentRightY) + 5;
+                
+                // Agreed next steps
+                if (item.assess || item.conserve || item.mount || item.materials) {
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(9);
+                    doc.setTextColor(40, 40, 40);
+                    doc.text("Agreed Next Steps:", leftCol, yPos);
+                    yPos += 5;
+                    
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(60, 60, 60);
+                    
+                    if (item.assess) {
+                        doc.text("✓ Assessment and treatment report", leftCol + 2, yPos);
+                        yPos += 4;
+                    }
+                    if (item.conserve) {
+                        doc.text("✓ Conservation at agreed price", leftCol + 2, yPos);
+                        yPos += 4;
+                    }
+                    if (item.mount) {
+                        doc.text("✓ Mounting at agreed cost", leftCol + 2, yPos);
+                        yPos += 4;
+                    }
+                    if (item.materials) {
+                        doc.text("✓ Agreed cost of materials", leftCol + 2, yPos);
+                        yPos += 4;
+                    }
+                }
+                
+                // Add image if available (positioned on the right)
+                if (item.imageData) {
+                    try {
+                        const imageY = startY - 5;
+                        doc.addImage(item.imageData, 'JPEG', 150, imageY, 40, 30);
+                    } catch (e) {
+                        console.error('Error adding image:', e);
+                    }
+                }
+                
+                yPos += 15; // Space between items
+            });
+            
+            // Footer (matching template)
+            yPos = Math.max(yPos + 20, 250);
+            
+            // Final divider
+            for (let x = 20; x < 190; x += 3) {
+                doc.line(x, yPos, x + 1.5, yPos);
+            }
+            yPos += 10;
+            
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Thank you for choosing The Paper Conservation Studio", 20, yPos);
+            yPos += 8;
+            
+            doc.setFontSize(7);
+            doc.setTextColor(120, 120, 120);
+            const footerLines = [
+                "Address: Unit 64 The Design Tower, Pearse Street, Dublin 2",
+                "Telephone: 01-6707984 | Mobile: 0862451318",
+                "Web: thepaperconservationstudio.ie",
+                "Email: thepaperconservationstudio@outlook.com"
+            ];
+            
+            footerLines.forEach((line, index) => {
+                doc.text(line, 20, yPos + (index * 3));
+            });
+            
+            yPos += footerLines.length * 3 + 5;
+            
+            doc.text("This receipt serves as documentation of items received for conservation assessment and treatment.", 20, yPos);
+            
+            // Generate and share
+            const blob = doc.output("blob");
+            showSharingOptions(blob, data.receiptNumber, 'Conservation Receipt', data.clientName);
+        }
 
-async function shareNative() {
-  const file = new File([window.currentPdfBlob], `receipt-${window.currentReceiptNumber}.pdf`, { type: "application/pdf" });
-  
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    await navigator.share({
-      title: "Professional Work Receipt",
-      text: `Work receipt for ${document.getElementById("client").value} - ${document.getElementById("title").value}`,
-      files: [file]
-    });
-  }
-  
-  closeSharingModal();
-}
+        // Sharing functions (same as before)
+        function showSharingOptions(pdfBlob, receiptNumber, jobTitle, clientName) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl max-w-md w-full p-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Share Receipt</h3>
+                    <p class="text-gray-600 mb-6">Choose how you'd like to share your conservation receipt:</p>
+                    
+                    <div class="space-y-3">
+                        <button onclick="shareViaEmail('${receiptNumber}', '${jobTitle}', '${clientName}')" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
+                            📧 Share via Email
+                        </button>
+                        
+                        <button onclick="downloadPDF()" 
+                                class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center">
+                            💾 Download PDF
+                        </button>
+                        
+                        <button onclick="shareNative()" 
+                                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center" 
+                                style="display: ${navigator.canShare ? 'block' : 'none'}">
+                            📱 Share via Apps
+                        </button>
+                    </div>
+                    
+                    <button onclick="closeSharingModal()" 
+                            class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            window.currentPdfBlob = pdfBlob;
+            window.currentReceiptNumber = receiptNumber;
+            window.currentSharingModal = modal;
+        }
 
-function closeSharingModal() {
-  if (window.currentSharingModal) {
-    document.body.removeChild(window.currentSharingModal);
-    window.currentSharingModal = null;
-  }
-}
+        function shareViaEmail(receiptNumber, jobTitle, clientName) {
+            const subject = encodeURIComponent(`Conservation Receipt - ${receiptNumber}`);
+            const body = encodeURIComponent(`Dear ${clientName},\n\nPlease find attached the conservation receipt for your artwork.\n\nReceipt Number: ${receiptNumber}\nDate: ${document.getElementById('receiptDate').value}\n\nThank you for choosing The Paper Conservation Studio.\n\nBest regards,\nPat McBride\nThe Paper Conservation Studio`);
+            
+            const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+            window.open(mailtoLink);
+            
+            downloadPDF();
+            
+            setTimeout(() => {
+                alert('Your email client should open with a pre-filled message. Please attach the downloaded PDF file to complete the email.');
+            }, 1000);
+            
+            closeSharingModal();
+        }
 
-// Add some nice animations
-document.addEventListener('DOMContentLoaded', function() {
-  const inputs = document.querySelectorAll('input, textarea');
-  inputs.forEach(input => {
-    input.addEventListener('focus', function() {
-      this.parentElement.classList.add('ring-2', 'ring-blue-500');
-    });
-    input.addEventListener('blur', function() {
-      this.parentElement.classList.remove('ring-2', 'ring-blue-500');
-    });
-  });
-});
-</script>
+        function downloadPDF() {
+            const url = URL.createObjectURL(window.currentPdfBlob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `conservation-receipt-${window.currentReceiptNumber}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+            closeSharingModal();
+        }
 
-</body>
+        async function shareNative() {
+            const file = new File([window.currentPdfBlob], `conservation-receipt-${window.currentReceiptNumber}.pdf`, { type: "application/pdf" });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: "Conservation Receipt",
+                    files: [file]
+                });
+            }
+            
+            closeSharingModal();
+        }
+
+        function closeSharingModal() {
+            if (window.currentSharingModal) {
+                document.body.removeChild(window.currentSharingModal);
+                window.currentSharingModal = null;
+            }
+        }
+
+        function closePreview() {
+            document.getElementById('preview').classList.add('hidden');
+        }
+    </script></body>
 </html>
