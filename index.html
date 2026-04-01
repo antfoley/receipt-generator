@@ -45,26 +45,28 @@
             left: -9999px;
         }
         .image-preview {
-            max-width: 150px;
-            max-height: 120px;
+            width: 150px;
+            height: 120px;
             object-fit: cover;
+            object-position: center;
             border-radius: 8px;
             display: block;
             margin: 0 auto;
+            border: 2px solid #e5e7eb;
         }
         
         /* Mobile responsive image preview */
         @media (max-width: 768px) {
             .image-preview {
-                max-width: 120px;
-                max-height: 100px;
+                width: 120px;
+                height: 100px;
             }
         }
         
         @media (max-width: 480px) {
             .image-preview {
-                max-width: 100px;
-                max-height: 80px;
+                width: 100px;
+                height: 80px;
             }
         }
         
@@ -73,7 +75,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             text-align: center;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .wizard-step {
             display: none;
@@ -548,8 +554,10 @@
                     // Set image source and ensure proper mobile display
                     imagePreview.src = correctedImageData;
                     imagePreview.style.transform = 'rotate(0deg)';
-                    imagePreview.style.maxWidth = '100%';
-                    imagePreview.style.height = 'auto';
+                    imagePreview.style.width = 'inherit';
+                    imagePreview.style.height = 'inherit';
+                    imagePreview.style.objectFit = 'cover';
+                    imagePreview.style.objectPosition = 'center';
                     
                     imagePreviewContainer.classList.remove('hidden');
                     imageUploadPrompt.style.display = 'none';
@@ -957,8 +965,21 @@
         }
 
         async function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const data = collectFormData();
+            try {
+                // Check if jsPDF is loaded
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    alert('PDF library not loaded. Please refresh the page and try again.');
+                    return;
+                }
+                
+                const { jsPDF } = window.jspdf;
+                const data = collectFormData();
+                
+                // Validate required data
+                if (!data.receiptNumber || !data.clientName) {
+                    alert('Please fill in the required fields (Receipt Number and Client Name).');
+                    return;
+                }
             
             // Create PDF with template-based layout matching the form design
             const doc = new jsPDF();
@@ -1276,6 +1297,11 @@
             // Generate and share
             const blob = doc.output("blob");
             showSharingOptions(blob, data.receiptNumber, 'Conservation Receipt', data.clientName);
+            
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                alert('Error generating PDF: ' + error.message + '. Please check your form data and try again.');
+            }
         }
 
         // Sharing functions (same as before)
