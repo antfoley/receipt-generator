@@ -4,167 +4,317 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conservation Receipt</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
             body { margin: 0; padding: 0; }
             .no-print { display: none; }
-            .receipt-container { box-shadow: none; margin: 0; }
         }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
         .receipt-container {
             max-width: 800px;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 2px solid #8B4513;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .header-gradient {
-            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
-        }
-        .receipt-image {
-            max-width: 100%;
-            max-height: 200px;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        .divider {
-            border-top: 2px dashed #e5e7eb;
-            margin: 1rem 0;
-        }
-        .item-container {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            padding: 1rem;
-        }
-        .checkbox-list {
-            display: grid;
-            gap: 0.5rem;
-        }
-        .checkbox-item {
+        
+        .header {
+            background: linear-gradient(135deg, #CD853F 0%, #8B4513 100%);
+            color: white;
+            padding: 10px 20px;
             display: flex;
-            align-items: flex-start;
-            gap: 0.5rem;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
         }
+        
+        .receipt-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .studio-name {
+            font-size: 16px;
+        }
+        
+        .form-section {
+            padding: 0;
+        }
+        
+        .form-row {
+            display: flex;
+            border-bottom: 1px solid #8B4513;
+        }
+        
+        .form-field {
+            padding: 8px 12px;
+            border-right: 1px solid #8B4513;
+            min-height: 25px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-field:last-child {
+            border-right: none;
+        }
+        
+        .field-label {
+            background: linear-gradient(135deg, #CD853F 0%, #8B4513 100%);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            flex: 0 0 120px;
+        }
+        
+        .field-value {
+            flex: 1;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #DEB887 0%, #CD853F 100%);
+            color: #2F1B14;
+            font-weight: bold;
+            padding: 6px 12px;
+            font-size: 12px;
+            text-align: center;
+            border-bottom: 1px solid #8B4513;
+        }
+        
+        .image-section {
+            padding: 0;
+            border-bottom: 1px solid #8B4513;
+            min-height: 200px;
+            background: #f8f8f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-placeholder {
+            width: 180px;
+            height: 180px;
+            border: 2px dashed #CD853F;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #8B4513;
+            font-size: 12px;
+        }
+        
+        .item-image {
+            max-width: 180px;
+            max-height: 180px;
+            object-fit: contain;
+            border: 1px solid #8B4513;
+        }
+        
+        .checkbox-section {
+            padding: 15px;
+            background: white;
+        }
+        
+        .checkbox-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .checkbox-table th {
+            background: linear-gradient(135deg, #CD853F 0%, #8B4513 100%);
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid #8B4513;
+        }
+        
+        .checkbox-table td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #8B4513;
+            font-size: 12px;
+            vertical-align: middle;
+        }
+        
+        .checkbox-text {
+            text-align: left;
+            padding-left: 15px;
+        }
+        
         .checkbox-mark {
-            width: 12px;
-            height: 12px;
-            border: 1px solid #6b7280;
-            border-radius: 2px;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-        .checkbox-mark.checked {
-            background-color: #10b981;
-            border-color: #10b981;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #8B4513;
+            display: inline-block;
             position: relative;
+            margin: 0 auto;
         }
+        
+        .checkbox-mark.checked {
+            background-color: #8B4513;
+        }
+        
         .checkbox-mark.checked::after {
             content: '✓';
             color: white;
-            font-size: 10px;
+            font-size: 16px;
+            font-weight: bold;
             position: absolute;
             top: -2px;
-            left: 1px;
+            left: 3px;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #CD853F 0%, #8B4513 100%);
+            color: white;
+            padding: 10px 20px;
+            font-size: 11px;
+            text-align: center;
+        }
+        
+        .footer-line {
+            margin: 2px 0;
+        }
+        
+        .framed-options {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .framed-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .frame-checkbox {
+            width: 15px;
+            height: 15px;
+            border: 1px solid #8B4513;
+            display: inline-block;
+        }
+        
+        .frame-checkbox.checked {
+            background-color: #8B4513;
+            position: relative;
+        }
+        
+        .frame-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            position: absolute;
+            top: -1px;
+            left: 2px;
         }
     </style>
 </head>
-<body class="bg-gray-50 py-8 px-4">
-    <div class="receipt-container rounded-lg overflow-hidden">
+<body>
+    <div class="receipt-container">
         <!-- Header -->
-        <div class="header-gradient text-white p-6">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h1 class="text-3xl font-bold">The Paper Conservation Studio</h1>
-                    <p class="text-blue-100 mt-1">Conservation Receipt</p>
-                </div>
-                <div class="text-right">
-                    <div class="bg-white bg-opacity-20 rounded-lg p-3">
-                        <p class="text-sm font-medium">Receipt #</p>
-                        <p id="receiptNumber" class="font-mono text-lg">[Receipt Number]</p>
-                    </div>
-                </div>
+        <div class="header">
+            <div class="receipt-title">RECEIPT</div>
+            <div class="studio-name">The Paper Conservation Studio</div>
+        </div>
+
+        <!-- Form Fields -->
+        <div class="form-section">
+            <!-- Receipt Number Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Receipt No.</div>
+                <div class="form-field field-value" id="receiptNumber">[Receipt Number]</div>
+            </div>
+            
+            <!-- Date Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Date</div>
+                <div class="form-field field-value" id="receiptDate">[Date]</div>
+            </div>
+            
+            <!-- Customer Ref Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Customers ref.</div>
+                <div class="form-field field-value" id="customerRef">[Customer Ref]</div>
+            </div>
+            
+            <!-- Number of Items Row -->
+            <div class="form-row">
+                <div class="form-field field-label">No. of Items</div>
+                <div class="form-field field-value" id="numberOfItems">[Number]</div>
+            </div>
+            
+            <!-- Client Details Section Header -->
+            <div class="section-header">CLIENT DETAILS</div>
+            
+            <!-- Name of Client Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Name of Client</div>
+                <div class="form-field field-value" id="clientName">[Client Name]</div>
+            </div>
+            
+            <!-- Name of Contact Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Name of Contact</div>
+                <div class="form-field field-value" id="contactName">[Contact Name]</div>
+            </div>
+            
+            <!-- Address Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Address</div>
+                <div class="form-field field-value" id="clientAddress">[Address]</div>
+            </div>
+            
+            <!-- Phone Number Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Phone Number</div>
+                <div class="form-field field-value" id="clientPhone">[Phone]</div>
+            </div>
+            
+            <!-- Email Row -->
+            <div class="form-row">
+                <div class="form-field field-label">Email</div>
+                <div class="form-field field-value" id="clientEmail">[Email]</div>
             </div>
         </div>
 
-        <!-- Receipt Content -->
-        <div class="p-6 bg-white">
-            <!-- Basic Info Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div>
-                    <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Date</label>
-                    <p id="receiptDate" class="text-lg font-semibold text-gray-900">[Date]</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Receipt By</label>
-                    <p id="receiptBy" class="text-lg font-semibold text-gray-900">[Receipt By]</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Telephone</label>
-                    <p id="receiptTelephone" class="text-lg font-semibold text-gray-900">[Telephone]</p>
-                </div>
-            </div>
+        <!-- Items Container -->
+        <div id="itemsContainer">
+            <!-- Items will be populated dynamically -->
+        </div>
 
-            <div class="divider"></div>
+        <!-- Agreed Next Steps -->
+        <div class="checkbox-section">
+            <div style="color: #8B4513; font-weight: bold; font-size: 14px; margin-bottom: 10px;">AGREED NEXT STEP</div>
+            
+            <table class="checkbox-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60%;">&nbsp;</th>
+                        <th style="width: 20%;">YES</th>
+                        <th style="width: 20%;">NO</th>
+                    </tr>
+                </thead>
+                <tbody id="agreementTableBody">
+                    <!-- Agreement rows will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
 
-            <!-- Client Information -->
-            <div class="mb-6">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Client Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Client Name</label>
-                            <p id="clientName" class="text-lg font-semibold text-gray-900">[Client Name]</p>
-                        </div>
-                        <div id="contactSection" style="display: none;">
-                            <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Contact Person</label>
-                            <p id="contactName" class="text-lg font-semibold text-gray-900">[Contact Name]</p>
-                        </div>
-                        <div id="phoneSection" style="display: none;">
-                            <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Phone</label>
-                            <p id="clientPhone" class="text-lg font-semibold text-gray-900">[Phone]</p>
-                        </div>
-                        <div id="emailSection" style="display: none;">
-                            <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Email</label>
-                            <p id="clientEmail" class="text-lg font-semibold text-gray-900">[Email]</p>
-                        </div>
-                    </div>
-                    <div id="addressSection" style="display: none;">
-                        <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Address</label>
-                        <div id="clientAddress" class="bg-gray-50 p-3 rounded-lg">
-                            <p class="text-gray-700 leading-relaxed">[Address]</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Items Section -->
-            <div class="mb-6">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Conservation Items</h2>
-                <div id="itemsContainer">
-                    <!-- Items will be populated dynamically -->
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Footer -->
-            <div class="text-center pt-4">
-                <p class="text-sm text-gray-500 mb-4">Thank you for choosing The Paper Conservation Studio</p>
-                <div class="text-xs text-gray-400 space-y-1">
-                    <p><strong>Address:</strong> Unit 64 The Design Tower, Pearse Street, Dublin 2</p>
-                    <p><strong>Telephone:</strong> 01-6707984 | <strong>Mobile:</strong> 0862451318</p>
-                    <p><strong>Web:</strong> thepaperconservationstudio.ie</p>
-                    <p><strong>Email:</strong> thepaperconservationstudio@outlook.com</p>
-                </div>
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <p class="text-xs text-gray-400">
-                        This receipt serves as documentation of items received for conservation assessment and treatment.
-                    </p>
-                </div>
-            </div>
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-line"><strong>Address:</strong> Unit 64 The Design Tower, Pearse Street, Dublin 2. <strong>Telephone:</strong> 01-6707984 <strong>Mobile:</strong> 086 2451318</div>
+            <div class="footer-line"><strong>Web:</strong> thepaperconservationstudio.ie <strong>Email:</strong> thepaperconservationstudio@outlook.com</div>
         </div>
     </div>
 
@@ -174,36 +324,21 @@
             // Basic receipt info
             document.getElementById('receiptNumber').textContent = data.receiptNumber || '[Receipt Number]';
             document.getElementById('receiptDate').textContent = data.receiptDate || '[Date]';
-            document.getElementById('receiptBy').textContent = data.receiptBy || '[Receipt By]';
-            document.getElementById('receiptTelephone').textContent = data.receiptTelephone || '[Telephone]';
+            document.getElementById('customerRef').textContent = data.customerRef || '[Customer Ref]';
+            document.getElementById('numberOfItems').textContent = data.numberOfItems || '[Number]';
             
             // Client info
             document.getElementById('clientName').textContent = data.clientName || '[Client Name]';
-            
-            // Optional client fields
-            toggleSection('contactSection', data.contactName, 'contactName');
-            toggleSection('phoneSection', data.clientPhone, 'clientPhone');
-            toggleSection('emailSection', data.clientEmail, 'clientEmail');
-            toggleSection('addressSection', data.clientAddress, 'clientAddress');
+            document.getElementById('contactName').textContent = data.contactName || '[Contact Name]';
+            document.getElementById('clientAddress').textContent = data.clientAddress || '[Address]';
+            document.getElementById('clientPhone').textContent = data.clientPhone || '[Phone]';
+            document.getElementById('clientEmail').textContent = data.clientEmail || '[Email]';
             
             // Populate items
             populateItems(data.items || []);
-        }
-        
-        function toggleSection(sectionId, value, elementId) {
-            const section = document.getElementById(sectionId);
-            const element = document.getElementById(elementId);
             
-            if (value && value.trim()) {
-                section.style.display = 'block';
-                if (element.tagName === 'P') {
-                    element.textContent = value;
-                } else {
-                    element.innerHTML = `<p class="text-gray-700 leading-relaxed">${value}</p>`;
-                }
-            } else {
-                section.style.display = 'none';
-            }
+            // Populate agreements
+            populateAgreements(data.items || []);
         }
         
         function populateItems(items) {
@@ -218,84 +353,107 @@
         
         function createItemHTML(item, index) {
             return `
-                <div class="item-container">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex-grow">
-                            <h3 class="text-lg font-semibold text-gray-900">${item.objectNumber || 'Item ' + (index + 1)}</h3>
-                            <p class="text-xl font-bold text-gray-800 mt-1">${item.title || 'Untitled'}</p>
-                            ${item.artist ? `<p class="text-gray-600">by ${item.artist}</p>` : ''}
-                        </div>
-                        ${item.imageData ? `
-                            <div class="ml-4 flex-shrink-0">
-                                <img src="${item.imageData}" alt="Item image" class="receipt-image">
-                            </div>
-                        ` : ''}
+                <!-- Item Details Section -->
+                <div class="section-header">FRAME DETAILS</div>
+                
+                <!-- Artist Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Artist</div>
+                    <div class="form-field field-value">${item.artist || '[Artist]'}</div>
+                    <div class="image-section" rowspan="7" style="flex: 0 0 200px;">
+                        ${item.imageData ? 
+                            `<img src="${item.imageData}" alt="Item image" class="item-image">` : 
+                            `<div class="image-placeholder">Image Area</div>`
+                        }
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        ${item.imageType ? `
-                            <div>
-                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Image Type</label>
-                                <p class="text-gray-800">${item.imageType}</p>
+                </div>
+                
+                <!-- Title Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Title</div>
+                    <div class="form-field field-value">${item.title || '[Title]'}</div>
+                </div>
+                
+                <!-- Image Type Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Image type</div>
+                    <div class="form-field field-value">${item.imageType || '[Image Type]'}</div>
+                </div>
+                
+                <!-- Media Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Media</div>
+                    <div class="form-field field-value">${item.media || '[Media]'}</div>
+                </div>
+                
+                <!-- Size Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Size</div>
+                    <div class="form-field field-value">${item.size || '[Size]'}</div>
+                </div>
+                
+                <!-- Framed Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Framed</div>
+                    <div class="form-field field-value">
+                        <div class="framed-options">
+                            <div class="framed-option">
+                                <div class="frame-checkbox ${item.framed ? 'checked' : ''}"></div>
+                                <span>Framed</span>
                             </div>
-                        ` : ''}
-                        ${item.media ? `
-                            <div>
-                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Media</label>
-                                <p class="text-gray-800">${item.media}</p>
-                            </div>
-                        ` : ''}
-                        ${item.size ? `
-                            <div>
-                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Size</label>
-                                <p class="text-gray-800">${item.size}</p>
-                            </div>
-                        ` : ''}
-                        ${item.framed ? `
-                            <div>
-                                <label class="text-sm font-medium text-gray-600 uppercase tracking-wide">Frame</label>
-                                <p class="text-gray-800">Framed${item.frameType ? ` - ${item.frameType}` : ''}</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    ${hasAgreedSteps(item) ? `
-                        <div class="bg-blue-50 p-4 rounded-lg">
-                            <h4 class="font-semibold text-gray-900 mb-3">Agreed Next Steps</h4>
-                            <div class="checkbox-list">
-                                ${item.assess ? `
-                                    <div class="checkbox-item">
-                                        <div class="checkbox-mark checked"></div>
-                                        <span class="text-sm text-gray-700">To assess the work and to provide a condition and proposed treatment report and full costing of the same</span>
-                                    </div>
-                                ` : ''}
-                                ${item.conserve ? `
-                                    <div class="checkbox-item">
-                                        <div class="checkbox-mark checked"></div>
-                                        <span class="text-sm text-gray-700">To conserve the work at an agreed price</span>
-                                    </div>
-                                ` : ''}
-                                ${item.mount ? `
-                                    <div class="checkbox-item">
-                                        <div class="checkbox-mark checked"></div>
-                                        <span class="text-sm text-gray-700">To mount the work to an agreed cost</span>
-                                    </div>
-                                ` : ''}
-                                ${item.materials ? `
-                                    <div class="checkbox-item">
-                                        <div class="checkbox-mark checked"></div>
-                                        <span class="text-sm text-gray-700">Agreed cost of materials</span>
-                                    </div>
-                                ` : ''}
+                            <div class="framed-option">
+                                <div class="frame-checkbox ${!item.framed ? 'checked' : ''}"></div>
+                                <span>Unframed</span>
                             </div>
                         </div>
-                    ` : ''}
+                    </div>
+                </div>
+                
+                <!-- Frame Type Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Frame Type</div>
+                    <div class="form-field field-value">${item.frameType || (item.framed ? '[Frame Type]' : 'N/A')}</div>
+                </div>
+                
+                <!-- Receipt by Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Receipt by</div>
+                    <div class="form-field field-value">${item.receiptBy || 'Pat McBride'}</div>
+                </div>
+                
+                <!-- Contact Row -->
+                <div class="form-row">
+                    <div class="form-field field-label">Contact</div>
+                    <div class="form-field field-value">${item.contact || '0862451318'}</div>
                 </div>
             `;
         }
         
-        function hasAgreedSteps(item) {
-            return item.assess || item.conserve || item.mount || item.materials;
+        function populateAgreements(items) {
+            const tbody = document.getElementById('agreementTableBody');
+            tbody.innerHTML = '';
+            
+            // Create agreement rows based on first item's agreements
+            const agreements = [
+                { key: 'assess', text: 'To assess the work and to provide a condition and proposed treatment report and full costings of same' },
+                { key: 'conserve', text: 'To conserve the work at an agreed price' },
+                { key: 'mount', text: 'To mount the work to an agreed cost' },
+                { key: 'materials', text: 'Agreed cost of Materials' }
+            ];
+            
+            agreements.forEach(agreement => {
+                const firstItem = items[0] || {};
+                const isChecked = firstItem[agreement.key];
+                
+                const row = `
+                    <tr>
+                        <td class="checkbox-text">${agreement.text}</td>
+                        <td><div class="checkbox-mark ${isChecked ? 'checked' : ''}"></div></td>
+                        <td><div class="checkbox-mark ${!isChecked ? 'checked' : ''}"></div></td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
         }
         
         // Export function for external use

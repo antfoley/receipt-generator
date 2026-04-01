@@ -116,6 +116,12 @@
                     </div>
                     
                     <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Customer Reference</label>
+                        <input id="customerRef" placeholder="Customer reference number/code"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Number of Items</label>
                         <input id="numberOfItems" type="number" value="1" min="1" 
                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -127,7 +133,7 @@
                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     
-                    <div class="md:col-span-2">
+                    <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Telephone</label>
                         <input id="receiptTelephone" type="tel" value="0862451318"
                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -703,12 +709,16 @@
             // Populate basic info
             const receiptNumber = document.querySelector('#reviewContent #receiptNumber');
             const receiptDate = document.querySelector('#reviewContent #receiptDate');
+            const customerRef = document.querySelector('#reviewContent #customerRef');
+            const numberOfItems = document.querySelector('#reviewContent #numberOfItems');
             const receiptBy = document.querySelector('#reviewContent #receiptBy');
             const receiptTelephone = document.querySelector('#reviewContent #receiptTelephone');
             const clientName = document.querySelector('#reviewContent #clientName');
             
             if (receiptNumber) receiptNumber.textContent = data.receiptNumber || '[Receipt Number]';
             if (receiptDate) receiptDate.textContent = data.receiptDate || '[Date]';
+            if (customerRef) customerRef.textContent = data.customerRef || '[Customer Ref]';
+            if (numberOfItems) numberOfItems.textContent = data.numberOfItems || '[Number]';
             if (receiptBy) receiptBy.textContent = data.receiptBy || '[Receipt By]';
             if (receiptTelephone) receiptTelephone.textContent = data.receiptTelephone || '[Telephone]';
             if (clientName) clientName.textContent = data.clientName || '[Client Name]';
@@ -886,6 +896,7 @@
             const data = {
                 receiptNumber: document.getElementById('receiptNumber').value,
                 receiptDate: document.getElementById('receiptDate').value,
+                customerRef: document.getElementById('customerRef').value,
                 numberOfItems: document.getElementById('numberOfItems').value,
                 receiptBy: document.getElementById('receiptBy').value,
                 receiptTelephone: document.getElementById('receiptTelephone').value,
@@ -923,267 +934,264 @@
             const { jsPDF } = window.jspdf;
             const data = collectFormData();
             
-            // Create PDF with template-based layout
+            // Create PDF with template-based layout matching the form design
             const doc = new jsPDF();
             let yPos = 20;
             
-            // Header - The Paper Conservation Studio
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(20);
-            doc.setTextColor(30, 58, 138); // Blue color matching template
-            doc.text("The Paper Conservation Studio", 20, yPos);
-            yPos += 8;
+            // Colors matching the template
+            const brownColor = [139, 69, 19]; // #8B4513
+            const lightBrownColor = [205, 133, 63]; // #CD853F
             
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(60, 60, 60);
-            doc.text("Conservation Receipt", 20, yPos);
+            // Header - Brown background with white text
+            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.rect(15, yPos - 5, 180, 15, 'F');
             
-            // Receipt number box (matching template design)
-            doc.setDrawColor(200, 200, 200);
-            doc.setFillColor(245, 245, 245);
-            doc.roundedRect(140, 12, 50, 18, 3, 3, 'FD');
-            doc.setTextColor(60, 60, 60);
-            doc.setFontSize(8);
-            doc.text("Receipt #", 145, 18);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.text(data.receiptNumber, 145, 25);
+            doc.setFontSize(14);
+            doc.setTextColor(255, 255, 255);
+            doc.text("RECEIPT", 20, yPos + 5);
+            doc.text("The Paper Conservation Studio", 120, yPos + 5);
             
             yPos += 20;
             
-            // Basic info grid
+            // Form fields with borders (matching the template layout)
+            const fieldHeight = 8;
+            const labelWidth = 35;
+            const totalWidth = 180;
+            
+            // Helper function to draw a form row
+            function drawFormRow(label, value, yPosition) {
+                // Draw border
+                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.setLineWidth(0.5);
+                doc.rect(15, yPosition, totalWidth, fieldHeight);
+                doc.line(15 + labelWidth, yPosition, 15 + labelWidth, yPosition + fieldHeight);
+                
+                // Label background
+                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.rect(15, yPosition, labelWidth, fieldHeight, 'F');
+                
+                // Label text
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(255, 255, 255);
+                doc.text(label, 17, yPosition + 5.5);
+                
+                // Value text
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(0, 0, 0);
+                doc.text(value || '', 18 + labelWidth, yPosition + 5.5);
+                
+                return yPosition + fieldHeight;
+            }
+            
+            // Receipt fields
+            yPos = drawFormRow('Receipt No.', data.receiptNumber, yPos);
+            yPos = drawFormRow('Date', data.receiptDate, yPos);
+            yPos = drawFormRow('Customers ref.', data.customerRef, yPos);
+            yPos = drawFormRow('No. of Items', data.numberOfItems, yPos);
+            
+            yPos += 2;
+            
+            // Client Details section header
+            doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
+            doc.rect(15, yPos, totalWidth, 6, 'F');
             doc.setFont("helvetica", "bold");
             doc.setFontSize(10);
-            doc.setTextColor(80, 80, 80);
-            
-            // Row 1
-            doc.text("DATE", 20, yPos);
-            doc.text("RECEIPT BY", 80, yPos);
-            doc.text("TELEPHONE", 140, yPos);
+            doc.setTextColor(47, 27, 20); // Dark brown
+            doc.text('CLIENT DETAILS', 105 - doc.getTextWidth('CLIENT DETAILS') / 2, yPos + 4);
             
             yPos += 6;
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(40, 40, 40);
-            doc.text(data.receiptDate, 20, yPos);
-            doc.text(data.receiptBy, 80, yPos);
-            doc.text(data.receiptTelephone, 140, yPos);
             
-            yPos += 15;
-            
-            // Divider line (dashed)
-            doc.setDrawColor(220, 220, 220);
-            doc.setLineWidth(0.5);
-            for (let x = 20; x < 190; x += 3) {
-                doc.line(x, yPos, x + 1.5, yPos);
-            }
-            yPos += 10;
-            
-            // Client Information section
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(14);
-            doc.setTextColor(40, 40, 40);
-            doc.text("Client Information", 20, yPos);
-            yPos += 10;
-            
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.setTextColor(80, 80, 80);
-            doc.text("CLIENT NAME", 20, yPos);
-            yPos += 6;
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(40, 40, 40);
-            doc.text(data.clientName, 20, yPos);
-            yPos += 8;
-            
-            // Optional client fields
-            if (data.contactName) {
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(80, 80, 80);
-                doc.text("CONTACT PERSON", 20, yPos);
-                yPos += 6;
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(40, 40, 40);
-                doc.text(data.contactName, 20, yPos);
-                yPos += 8;
-            }
-            
-            if (data.clientPhone) {
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(80, 80, 80);
-                doc.text("PHONE", 20, yPos);
-                yPos += 6;
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(40, 40, 40);
-                doc.text(data.clientPhone, 20, yPos);
-                yPos += 8;
-            }
-            
-            if (data.clientEmail) {
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(80, 80, 80);
-                doc.text("EMAIL", 20, yPos);
-                yPos += 6;
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(40, 40, 40);
-                doc.text(data.clientEmail, 20, yPos);
-                yPos += 8;
-            }
-            
-            if (data.clientAddress) {
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(80, 80, 80);
-                doc.text("ADDRESS", 20, yPos);
-                yPos += 6;
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(40, 40, 40);
-                const addressLines = doc.splitTextToSize(data.clientAddress, 170);
-                doc.text(addressLines, 20, yPos);
-                yPos += addressLines.length * 4 + 4;
-            }
+            // Client fields
+            yPos = drawFormRow('Name of Client', data.clientName, yPos);
+            yPos = drawFormRow('Name of Contact', data.contactName, yPos);
+            yPos = drawFormRow('Address', data.clientAddress, yPos);
+            yPos = drawFormRow('Phone Number', data.clientPhone, yPos);
+            yPos = drawFormRow('Email', data.clientEmail, yPos);
             
             yPos += 5;
             
-            // Another divider
-            for (let x = 20; x < 190; x += 3) {
-                doc.line(x, yPos, x + 1.5, yPos);
-            }
-            yPos += 10;
-            
             // Items section
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(14);
-            doc.setTextColor(40, 40, 40);
-            doc.text("Conservation Items", 20, yPos);
-            yPos += 10;
-            
             data.items.forEach((item, index) => {
                 // Check if we need a new page
-                if (yPos > 240) {
+                if (yPos > 220) {
                     doc.addPage();
                     yPos = 20;
                 }
                 
-                // Item header
+                // Frame Details section header
+                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
+                doc.rect(15, yPos, totalWidth, 6, 'F');
                 doc.setFont("helvetica", "bold");
-                doc.setFontSize(12);
-                doc.setTextColor(40, 40, 40);
-                doc.text(`${item.objectNumber}: ${item.title || 'Untitled'}`, 20, yPos);
-                yPos += 8;
+                doc.setFontSize(10);
+                doc.setTextColor(47, 27, 20);
+                doc.text('FRAME DETAILS', 105 - doc.getTextWidth('FRAME DETAILS') / 2, yPos + 4);
                 
-                if (item.artist) {
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    doc.setTextColor(100, 100, 100);
-                    doc.text(`by ${item.artist}`, 20, yPos);
-                    yPos += 6;
-                }
+                yPos += 6;
                 
-                // Item details in grid format
-                const startY = yPos;
-                doc.setFont("helvetica", "normal");
+                // Item fields
+                yPos = drawFormRow('Artist', item.artist, yPos);
+                yPos = drawFormRow('Title', item.title, yPos);
+                yPos = drawFormRow('Image type', item.imageType, yPos);
+                yPos = drawFormRow('Media', item.media, yPos);
+                yPos = drawFormRow('Size', item.size, yPos);
+                
+                // Framed field with checkbox layout
+                const framedY = yPos;
+                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.rect(15, framedY, totalWidth, fieldHeight);
+                doc.line(15 + labelWidth, framedY, 15 + labelWidth, framedY + fieldHeight);
+                
+                // Label
+                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.rect(15, framedY, labelWidth, fieldHeight, 'F');
+                doc.setFont("helvetica", "bold");
                 doc.setFontSize(9);
-                doc.setTextColor(60, 60, 60);
+                doc.setTextColor(255, 255, 255);
+                doc.text('Framed', 17, framedY + 5.5);
                 
-                let leftCol = 25;
-                let rightCol = 110;
-                let currentLeftY = startY;
-                let currentRightY = startY;
+                // Checkboxes
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(0, 0, 0);
+                const checkboxSize = 3;
+                const checkboxY = framedY + 2.5;
                 
-                if (item.imageType) {
-                    doc.text(`Image Type: ${item.imageType}`, leftCol, currentLeftY);
-                    currentLeftY += 5;
-                }
-                if (item.media) {
-                    doc.text(`Media: ${item.media}`, leftCol, currentLeftY);
-                    currentLeftY += 5;
-                }
-                if (item.size) {
-                    doc.text(`Size: ${item.size}`, rightCol, currentRightY);
-                    currentRightY += 5;
-                }
+                // Framed checkbox
+                doc.rect(18 + labelWidth, checkboxY, checkboxSize, checkboxSize);
                 if (item.framed) {
-                    const frameText = `Frame: Framed${item.frameType ? ` - ${item.frameType}` : ''}`;
-                    doc.text(frameText, rightCol, currentRightY);
-                    currentRightY += 5;
-                }
-                
-                yPos = Math.max(currentLeftY, currentRightY) + 5;
-                
-                // Agreed next steps
-                if (item.assess || item.conserve || item.mount || item.materials) {
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(9);
-                    doc.setTextColor(40, 40, 40);
-                    doc.text("Agreed Next Steps:", leftCol, yPos);
-                    yPos += 5;
-                    
-                    doc.setFont("helvetica", "normal");
+                    doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                    doc.rect(18 + labelWidth, checkboxY, checkboxSize, checkboxSize, 'F');
+                    doc.setTextColor(255, 255, 255);
                     doc.setFontSize(8);
-                    doc.setTextColor(60, 60, 60);
-                    
-                    if (item.assess) {
-                        doc.text("✓ Assessment and treatment report", leftCol + 2, yPos);
-                        yPos += 4;
-                    }
-                    if (item.conserve) {
-                        doc.text("✓ Conservation at agreed price", leftCol + 2, yPos);
-                        yPos += 4;
-                    }
-                    if (item.mount) {
-                        doc.text("✓ Mounting at agreed cost", leftCol + 2, yPos);
-                        yPos += 4;
-                    }
-                    if (item.materials) {
-                        doc.text("✓ Agreed cost of materials", leftCol + 2, yPos);
-                        yPos += 4;
-                    }
+                    doc.text('✓', 18.5 + labelWidth, checkboxY + 2.5);
                 }
+                doc.setTextColor(0, 0, 0);
+                doc.text('Framed', 25 + labelWidth, checkboxY + 2);
                 
-                // Add image if available (positioned on the right)
+                // Unframed checkbox
+                doc.rect(55 + labelWidth, checkboxY, checkboxSize, checkboxSize);
+                if (!item.framed) {
+                    doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                    doc.rect(55 + labelWidth, checkboxY, checkboxSize, checkboxSize, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(8);
+                    doc.text('✓', 55.5 + labelWidth, checkboxY + 2.5);
+                }
+                doc.setTextColor(0, 0, 0);
+                doc.text('Unframed', 62 + labelWidth, checkboxY + 2);
+                
+                yPos += fieldHeight;
+                
+                yPos = drawFormRow('Frame Type', item.frameType || (item.framed ? '' : 'N/A'), yPos);
+                yPos = drawFormRow('Receipt by', data.receiptBy, yPos);
+                yPos = drawFormRow('Contact', data.receiptTelephone, yPos);
+                
+                // Add image if available (positioned on the right side)
                 if (item.imageData) {
                     try {
-                        const imageY = startY - 5;
-                        doc.addImage(item.imageData, 'JPEG', 150, imageY, 40, 30);
+                        const imageStartY = framedY - (8 * 7); // Position at the start of item fields
+                        doc.addImage(item.imageData, 'JPEG', 155, imageStartY, 35, 35);
                     } catch (e) {
                         console.error('Error adding image:', e);
                     }
                 }
                 
-                yPos += 15; // Space between items
+                yPos += 5;
             });
             
-            // Footer (matching template)
-            yPos = Math.max(yPos + 20, 250);
+            // Agreed Next Steps section
+            yPos += 5;
             
-            // Final divider
-            for (let x = 20; x < 190; x += 3) {
-                doc.line(x, yPos, x + 1.5, yPos);
-            }
-            yPos += 10;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.setTextColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.text('AGREED NEXT STEP', 20, yPos);
             
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(9);
-            doc.setTextColor(100, 100, 100);
-            doc.text("Thank you for choosing The Paper Conservation Studio", 20, yPos);
             yPos += 8;
             
-            doc.setFontSize(7);
-            doc.setTextColor(120, 120, 120);
-            const footerLines = [
-                "Address: Unit 64 The Design Tower, Pearse Street, Dublin 2",
-                "Telephone: 01-6707984 | Mobile: 0862451318",
-                "Web: thepaperconservationstudio.ie",
-                "Email: thepaperconservationstudio@outlook.com"
+            // Create agreement table
+            const agreements = [
+                { key: 'assess', text: 'To assess the work and to provide a condition and proposed treatment report and full costings of same' },
+                { key: 'conserve', text: 'To conserve the work at an agreed price' },
+                { key: 'mount', text: 'To mount the work to an agreed cost' },
+                { key: 'materials', text: 'Agreed cost of Materials' }
             ];
             
-            footerLines.forEach((line, index) => {
-                doc.text(line, 20, yPos + (index * 3));
+            // Table header
+            doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.rect(15, yPos, 120, 8, 'FD');
+            doc.rect(135, yPos, 30, 8, 'FD');
+            doc.rect(165, yPos, 30, 8, 'FD');
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.text('YES', 148, yPos + 5.5);
+            doc.text('NO', 178, yPos + 5.5);
+            
+            yPos += 8;
+            
+            // Agreement rows
+            const firstItem = data.items[0] || {};
+            agreements.forEach((agreement, index) => {
+                const rowHeight = 12;
+                const isChecked = firstItem[agreement.key];
+                
+                // Draw row borders
+                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.setFillColor(255, 255, 255);
+                doc.rect(15, yPos, 120, rowHeight, 'FD');
+                doc.rect(135, yPos, 30, rowHeight, 'FD');
+                doc.rect(165, yPos, 30, rowHeight, 'FD');
+                
+                // Agreement text
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(0, 0, 0);
+                const splitText = doc.splitTextToSize(agreement.text, 115);
+                doc.text(splitText, 18, yPos + 4);
+                
+                // Checkboxes
+                const checkY = yPos + 4;
+                const checkSize = 4;
+                
+                // YES checkbox
+                doc.rect(147, checkY, checkSize, checkSize);
+                if (isChecked) {
+                    doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                    doc.rect(147, checkY, checkSize, checkSize, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(10);
+                    doc.text('✓', 148, checkY + 3);
+                }
+                
+                // NO checkbox
+                doc.setFillColor(255, 255, 255);
+                doc.rect(177, checkY, checkSize, checkSize);
+                if (!isChecked) {
+                    doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                    doc.rect(177, checkY, checkSize, checkSize, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(10);
+                    doc.text('✓', 178, checkY + 3);
+                }
+                
+                yPos += rowHeight;
             });
             
-            yPos += footerLines.length * 3 + 5;
+            // Footer
+            yPos += 10;
             
-            doc.text("This receipt serves as documentation of items received for conservation assessment and treatment.", 20, yPos);
+            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.rect(15, yPos, totalWidth, 12, 'F');
+            
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(255, 255, 255);
+            doc.text('Address: Unit 64 The Design Tower, Pearse Street, Dublin 2. Telephone: 01-6707984 Mobile: 086 2451318', 17, yPos + 4);
+            doc.text('Web: thepaperconservationstudio.ie Email: thepaperconservationstudio@outlook.com', 17, yPos + 9);
             
             // Generate and share
             const blob = doc.output("blob");
