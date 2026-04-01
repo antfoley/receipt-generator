@@ -604,8 +604,8 @@
                 ctx.drawImage(img, -img.width / 2, -img.height / 2);
                 ctx.restore();
                 
-                // Update imageData with rotated version
-                imageData[index] = canvas.toDataURL('image/jpeg', 0.9);
+                // Update imageData with rotated version (ensure JPEG quality)
+                imageData[index] = canvas.toDataURL('image/jpeg', 0.8);
             };
             
             img.src = imageData[index];
@@ -952,7 +952,7 @@
                     conserve: document.getElementById(`conserve-${itemIndex}`)?.checked || false,
                     mount: document.getElementById(`mount-${itemIndex}`)?.checked || false,
                     materials: document.getElementById(`materials-${itemIndex}`)?.checked || false,
-                    imageData: imageData[itemIndex] || null
+                    imageData: imageData[itemIndex] ? imageData[itemIndex] : null
                 });
             });
             
@@ -1198,7 +1198,13 @@
                 // Add this item's image
                 if (item.imageData) {
                     try {
-                        doc.addImage(item.imageData, 'JPEG', currentImageX + 2, currentImageY + 2, currentImageWidth - 4, currentImageHeight - 4);
+                        // Ensure image data is in correct format
+                        let imageDataToUse = item.imageData;
+                        if (!imageDataToUse.startsWith('data:')) {
+                            console.warn('Image data may not be in correct format');
+                        }
+                        
+                        doc.addImage(imageDataToUse, 'JPEG', currentImageX + 2, currentImageY + 2, imageWidth - 4, imageHeight - 4);
                     } catch (e) {
                         console.error('Error adding image:', e);
                         doc.setFont("helvetica", "normal");
