@@ -997,23 +997,20 @@
             
             yPos += 15;
             
-            // Main content area (full width since images are only beside items)
+            // Main content area - responsive widths
+            const pageWidth = 190; // Total usable page width
+            const imageWidth = 55;
+            const imageHeight = 65;
+            const imageMargin = 5;
             const fieldHeight = 7;
             const labelWidth = 40;
             
-            // Image placeholder area (positioned like in template)
-            const imageX = 140;
-            const imageY = yPos;
-            const imageWidth = 55;
-            const imageHeight = 65;
-            
-            // Draw image border/placeholder
-            doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.setLineWidth(1);
-            doc.rect(imageX, imageY, imageWidth, imageHeight);
+            // Calculate content widths
+            const fullWidth = pageWidth;
+            const contentWithImageWidth = pageWidth - imageWidth - imageMargin;
             
             // Helper function to draw a form row (matching exact template styling)
-            function drawFormRow(label, value, yPosition, width = leftContentWidth) {
+            function drawFormRow(label, value, yPosition, width = fullWidth) {
                 // Draw border
                 doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
                 doc.setLineWidth(0.5);
@@ -1051,20 +1048,20 @@
             
             // CLIENT DETAILS section header
             doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-            doc.rect(10, yPos, 190, 6, 'F'); // Full width since no image
+            doc.rect(10, yPos, fullWidth, 6, 'F'); // Full width since no image
             doc.setFont("helvetica", "bold");
             doc.setFontSize(9);
             doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-            doc.text('CLIENT DETAILS', 100 - doc.getTextWidth('CLIENT DETAILS') / 2, yPos + 4); // Center on full width
+            doc.text('CLIENT DETAILS', 10 + (fullWidth / 2) - (doc.getTextWidth('CLIENT DETAILS') / 2), yPos + 4); // Center on full width
             
             yPos += 6;
             
             // Client fields (now full width)
-            yPos = drawFormRow('Name of Client', data.clientName, yPos, 190);
-            yPos = drawFormRow('Name of Contact', data.contactName, yPos, 190);
-            yPos = drawFormRow('Address', data.clientAddress, yPos, 190);
-            yPos = drawFormRow('Phone Number', data.clientPhone, yPos, 190);
-            yPos = drawFormRow('Email', data.clientEmail, yPos, 190);
+            yPos = drawFormRow('Name of Client', data.clientName, yPos, fullWidth);
+            yPos = drawFormRow('Name of Contact', data.contactName, yPos, fullWidth);
+            yPos = drawFormRow('Address', data.clientAddress, yPos, fullWidth);
+            yPos = drawFormRow('Phone Number', data.clientPhone, yPos, fullWidth);
+            yPos = drawFormRow('Email', data.clientEmail, yPos, fullWidth);
             
             yPos += 10;
             
@@ -1078,7 +1075,7 @@
                 
                 // Object number header (like template shows "26.01.A", "26.01.D", etc.)
                 doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-                doc.rect(10, yPos, 190, 6, 'F'); // Full width for object number
+                doc.rect(10, yPos, fullWidth, 6, 'F'); // Full width for object number
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(9);
                 doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
@@ -1088,38 +1085,36 @@
                 
                 yPos += 8;
                 
-                // Current item's image area (positioned for this specific item)
-                const currentImageX = 140;
+                // Current item's image area (positioned responsively)
+                const currentImageX = 10 + contentWithImageWidth + imageMargin;
                 const currentImageY = yPos;
-                const currentImageWidth = 55;
-                const currentImageHeight = 65;
                 
                 // Draw image border for this item
                 doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
                 doc.setLineWidth(1);
-                doc.rect(currentImageX, currentImageY, currentImageWidth, currentImageHeight);
+                doc.rect(currentImageX, currentImageY, imageWidth, imageHeight);
                 
-                // Item fields (only goes to edge of image area)
-                yPos = drawFormRow('Artist', item.artist, yPos);
-                yPos = drawFormRow('Title', item.title, yPos);
-                yPos = drawFormRow('Image type', item.imageType, yPos);
-                yPos = drawFormRow('Media', item.media, yPos);
-                yPos = drawFormRow('Size', item.size, yPos);
+                // Item fields (responsive width to accommodate image)
+                yPos = drawFormRow('Artist', item.artist, yPos, contentWithImageWidth);
+                yPos = drawFormRow('Title', item.title, yPos, contentWithImageWidth);
+                yPos = drawFormRow('Image type', item.imageType, yPos, contentWithImageWidth);
+                yPos = drawFormRow('Media', item.media, yPos, contentWithImageWidth);
+                yPos = drawFormRow('Size', item.size, yPos, contentWithImageWidth);
                 
                 // FRAME DETAILS header
                 doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-                doc.rect(10, yPos, leftContentWidth, 6, 'F');
+                doc.rect(10, yPos, contentWithImageWidth, 6, 'F');
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(9);
                 doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-                doc.text('FRAME DETAILS', 70 - doc.getTextWidth('FRAME DETAILS') / 2, yPos + 4);
+                doc.text('FRAME DETAILS', 10 + (contentWithImageWidth / 2) - (doc.getTextWidth('FRAME DETAILS') / 2), yPos + 4);
                 
                 yPos += 6;
                 
                 // Framed field with checkbox layout
                 const framedY = yPos;
                 doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.rect(10, framedY, leftContentWidth, fieldHeight);
+                doc.rect(10, framedY, contentWithImageWidth, fieldHeight);
                 doc.line(10 + labelWidth, framedY, 10 + labelWidth, framedY + fieldHeight);
                 
                 // Label
@@ -1164,7 +1159,7 @@
                 
                 yPos += fieldHeight;
                 
-                yPos = drawFormRow('Type', item.frameType || '', yPos);
+                yPos = drawFormRow('Type', item.frameType || '', yPos, 125);
                 
                 // AGREED NEXT STEPS for this item
                 yPos += 5;
@@ -1236,7 +1231,7 @@
             yPos += 10;
             
             doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.rect(10, yPos, 190, 15, 'F');
+            doc.rect(10, yPos, fullWidth, 15, 'F');
             
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7);
