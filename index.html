@@ -1058,6 +1058,37 @@
             
             yPos += 6;
             
+            // Add main image on the right side of client details (from first item)
+            const mainImageX = imageX;
+            const mainImageY = yPos;
+            const mainImageWidth = imageWidth;
+            const mainImageHeight = imageHeight;
+            
+            // Draw main image border
+            doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.setLineWidth(1);
+            doc.rect(mainImageX, mainImageY, mainImageWidth, mainImageHeight);
+            
+            // Add main image if available (from first item)
+            const firstItemImage = data.items[0]?.imageData;
+            if (firstItemImage) {
+                try {
+                    doc.addImage(firstItemImage, 'JPEG', mainImageX + 2, mainImageY + 2, mainImageWidth - 4, mainImageHeight - 4);
+                } catch (e) {
+                    console.error('Error adding main image:', e);
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(128, 128, 128);
+                    doc.text('Main Image', mainImageX + 20, mainImageY + 35);
+                }
+            } else {
+                // Show placeholder
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(128, 128, 128);
+                doc.text('No Image', mainImageX + 20, mainImageY + 35);
+            }
+            
             // Client fields
             yPos = drawFormRow('Name of Client', data.clientName, yPos);
             yPos = drawFormRow('Name of Contact', data.contactName, yPos);
@@ -1065,12 +1096,13 @@
             yPos = drawFormRow('Phone Number', data.clientPhone, yPos);
             yPos = drawFormRow('Email', data.clientEmail, yPos);
             
-            yPos += 5;
+            // Ensure we move past the main image area
+            yPos = Math.max(yPos + 5, mainImageY + mainImageHeight + 5);
             
             // Items section - create separate FRAME DETAILS section for each item
             data.items.forEach((item, index) => {
-                // Check if we need a new page for this item
-                if (yPos > 200) {
+                // Check if we need a new page for this item (more conservative spacing)
+                if (yPos > 180) {
                     doc.addPage();
                     yPos = 20;
                 }
@@ -1184,8 +1216,14 @@
                     doc.text('No Image', currentImageX + 20, currentImageY + 35);
                 }
                 
-                // Ensure we move past this item's image area
-                yPos = Math.max(yPos + 5, currentImageY + currentImageHeight + 5);
+                // Ensure we move past this item's image area and add spacing
+                yPos = Math.max(yPos + 10, currentImageY + currentImageHeight + 10);
+                
+                // Add page break if we're getting close to bottom with more items
+                if (index < data.items.length - 1 && yPos > 200) {
+                    doc.addPage();
+                    yPos = 20;
+                }
             });
             
             // Add receipt contact info after all items
@@ -1195,6 +1233,12 @@
             yPos += 10;
             
             // AGREED NEXT STEP section (exactly like template)
+            // Check if we need a new page for agreements section
+            if (yPos > 200) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
             doc.setFont("helvetica", "bold");
             doc.setFontSize(10);
             doc.setTextColor(brownColor[0], brownColor[1], brownColor[2]);
