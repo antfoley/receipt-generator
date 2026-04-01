@@ -997,8 +997,7 @@
             
             yPos += 15;
             
-            // Main content area with image placeholder on right
-            const leftContentWidth = 125; // Leave space for image on right
+            // Main content area (full width since images are only beside items)
             const fieldHeight = 7;
             const labelWidth = 40;
             
@@ -1045,59 +1044,29 @@
             yPos = drawFormRow('Date', data.receiptDate, yPos);
             yPos = drawFormRow('Customers ref.', data.customerRef, yPos);
             yPos = drawFormRow('No. of Items', data.numberOfItems.toString(), yPos);
+            yPos = drawFormRow('Receipt by', data.receiptBy, yPos);
+            yPos = drawFormRow('Contact', data.receiptTelephone, yPos);
             
             yPos += 2;
             
             // CLIENT DETAILS section header
             doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-            doc.rect(10, yPos, leftContentWidth, 6, 'F');
+            doc.rect(10, yPos, 190, 6, 'F'); // Full width since no image
             doc.setFont("helvetica", "bold");
             doc.setFontSize(9);
             doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-            doc.text('CLIENT DETAILS', 70 - doc.getTextWidth('CLIENT DETAILS') / 2, yPos + 4);
+            doc.text('CLIENT DETAILS', 100 - doc.getTextWidth('CLIENT DETAILS') / 2, yPos + 4); // Center on full width
             
             yPos += 6;
             
-            // Add main image on the right side of client details (from first item)
-            const mainImageX = imageX;
-            const mainImageY = yPos;
-            const mainImageWidth = imageWidth;
-            const mainImageHeight = imageHeight;
+            // Client fields (now full width)
+            yPos = drawFormRow('Name of Client', data.clientName, yPos, 190);
+            yPos = drawFormRow('Name of Contact', data.contactName, yPos, 190);
+            yPos = drawFormRow('Address', data.clientAddress, yPos, 190);
+            yPos = drawFormRow('Phone Number', data.clientPhone, yPos, 190);
+            yPos = drawFormRow('Email', data.clientEmail, yPos, 190);
             
-            // Draw main image border
-            doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.setLineWidth(1);
-            doc.rect(mainImageX, mainImageY, mainImageWidth, mainImageHeight);
-            
-            // Add main image if available (from first item)
-            const firstItemImage = data.items[0]?.imageData;
-            if (firstItemImage) {
-                try {
-                    doc.addImage(firstItemImage, 'JPEG', mainImageX + 2, mainImageY + 2, mainImageWidth - 4, mainImageHeight - 4);
-                } catch (e) {
-                    console.error('Error adding main image:', e);
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(8);
-                    doc.setTextColor(128, 128, 128);
-                    doc.text('Main Image', mainImageX + 20, mainImageY + 35);
-                }
-            } else {
-                // Show placeholder
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(128, 128, 128);
-                doc.text('No Image', mainImageX + 20, mainImageY + 35);
-            }
-            
-            // Client fields
-            yPos = drawFormRow('Name of Client', data.clientName, yPos);
-            yPos = drawFormRow('Name of Contact', data.contactName, yPos);
-            yPos = drawFormRow('Address', data.clientAddress, yPos);
-            yPos = drawFormRow('Phone Number', data.clientPhone, yPos);
-            yPos = drawFormRow('Email', data.clientEmail, yPos);
-            
-            // Ensure we move past the main image area
-            yPos = Math.max(yPos + 5, mainImageY + mainImageHeight + 5);
+            yPos += 10;
             
             // Items section - create separate FRAME DETAILS section for each item
             data.items.forEach((item, index) => {
@@ -1197,6 +1166,40 @@
                 
                 yPos = drawFormRow('Type', item.frameType || '', yPos);
                 
+                // AGREED NEXT STEPS for this item
+                yPos += 5;
+                
+                // Check if this item has any agreed steps
+                if (item.assess || item.conserve || item.mount || item.materials) {
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(9);
+                    doc.setTextColor(brownColor[0], brownColor[1], brownColor[2]);
+                    doc.text('AGREED NEXT STEPS FOR THIS ITEM:', 12, yPos);
+                    
+                    yPos += 6;
+                    
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(0, 0, 0);
+                    
+                    if (item.assess) {
+                        doc.text('✓ Assessment and treatment report', 15, yPos);
+                        yPos += 4;
+                    }
+                    if (item.conserve) {
+                        doc.text('✓ Conservation at agreed price', 15, yPos);
+                        yPos += 4;
+                    }
+                    if (item.mount) {
+                        doc.text('✓ Mounting at agreed cost', 15, yPos);
+                        yPos += 4;
+                    }
+                    if (item.materials) {
+                        doc.text('✓ Agreed cost of materials', 15, yPos);
+                        yPos += 4;
+                    }
+                }
+                
                 // Add this item's image
                 if (item.imageData) {
                     try {
@@ -1227,100 +1230,7 @@
             });
             
             // Add receipt contact info after all items
-            yPos = drawFormRow('Receipt by', data.receiptBy, yPos);
-            yPos = drawFormRow('Contact', data.receiptTelephone, yPos);
-            
             yPos += 10;
-            
-            // AGREED NEXT STEP section (exactly like template)
-            // Check if we need a new page for agreements section
-            if (yPos > 200) {
-                doc.addPage();
-                yPos = 20;
-            }
-            
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.setTextColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.text('AGREED NEXT STEP', 15, yPos);
-            
-            yPos += 8;
-            
-            // Agreement table (matching template layout exactly)
-            const tableWidth = 180;
-            const textColWidth = 120;
-            const yesColWidth = 30;
-            const noColWidth = 30;
-            
-            // Table header
-            doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.rect(10, yPos, textColWidth, 8, 'FD');
-            doc.rect(10 + textColWidth, yPos, yesColWidth, 8, 'FD');
-            doc.rect(10 + textColWidth + yesColWidth, yPos, noColWidth, 8, 'FD');
-            
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.setTextColor(255, 255, 255);
-            doc.text('YES', 10 + textColWidth + 12, yPos + 5);
-            doc.text('NO', 10 + textColWidth + yesColWidth + 12, yPos + 5);
-            
-            yPos += 8;
-            
-            // Agreement items
-            const firstItem = data.items[0] || {};
-            const agreements = [
-                { key: 'assess', text: 'To assess the work and to provide a condition and proposed treatment report and full costings of same' },
-                { key: 'conserve', text: 'To conserve the work at an agreed price' },
-                { key: 'mount', text: 'To mount the work to an agreed cost' },
-                { key: 'materials', text: 'Agreed cost of Materials' }
-            ];
-            
-            agreements.forEach((agreement, index) => {
-                const rowHeight = 12;
-                const isChecked = firstItem[agreement.key];
-                
-                // Draw row borders
-                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.setFillColor(255, 255, 255);
-                doc.rect(10, yPos, textColWidth, rowHeight, 'FD');
-                doc.rect(10 + textColWidth, yPos, yesColWidth, rowHeight, 'FD');
-                doc.rect(10 + textColWidth + yesColWidth, yPos, noColWidth, rowHeight, 'FD');
-                
-                // Agreement text
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(7);
-                doc.setTextColor(0, 0, 0);
-                const splitText = doc.splitTextToSize(agreement.text, textColWidth - 6);
-                doc.text(splitText, 13, yPos + 4);
-                
-                // Checkboxes
-                const checkY = yPos + 4;
-                const checkSize = 3;
-                
-                // YES checkbox
-                doc.rect(10 + textColWidth + 12, checkY, checkSize, checkSize);
-                if (isChecked) {
-                    doc.setFillColor(0, 0, 0);
-                    doc.rect(10 + textColWidth + 12, checkY, checkSize, checkSize, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(6);
-                    doc.text('✓', 10 + textColWidth + 13, checkY + 2.5);
-                }
-                
-                // NO checkbox
-                doc.setFillColor(255, 255, 255);
-                doc.rect(10 + textColWidth + yesColWidth + 12, checkY, checkSize, checkSize);
-                if (!isChecked) {
-                    doc.setFillColor(0, 0, 0);
-                    doc.rect(10 + textColWidth + yesColWidth + 12, checkY, checkSize, checkSize, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(6);
-                    doc.text('✓', 10 + textColWidth + yesColWidth + 13, checkY + 2.5);
-                }
-                
-                yPos += rowHeight;
-            });
             
             // Footer (exactly like template)
             yPos += 10;
