@@ -49,6 +49,31 @@
             max-height: 120px;
             object-fit: cover;
             border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* Mobile responsive image preview */
+        @media (max-width: 768px) {
+            .image-preview {
+                max-width: 120px;
+                max-height: 100px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .image-preview {
+                max-width: 100px;
+                max-height: 80px;
+            }
+        }
+        
+        /* Fix image container for mobile */
+        .image-preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
         }
         .wizard-step {
             display: none;
@@ -417,8 +442,8 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Image</label>
                         <div class="file-input w-full">
                             <label for="imageInput-${itemIndex}" class="w-full bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4 text-center cursor-pointer hover:bg-blue-100 transition-colors block">
-                                <div id="imagePreviewContainer-${itemIndex}" class="hidden">
-                                    <img id="imagePreview-${itemIndex}" class="image-preview mx-auto mb-2" style="transition: transform 0.3s ease;">
+                                <div id="imagePreviewContainer-${itemIndex}" class="hidden image-preview-container">
+                                    <img id="imagePreview-${itemIndex}" class="image-preview mb-2" style="transition: transform 0.3s ease;">
                                     <p class="text-sm text-gray-600">Click to change photo</p>
                                 </div>
                                 <div id="imageUploadPrompt-${itemIndex}">
@@ -432,7 +457,7 @@
                         </div>
                         
                         <!-- Rotation Controls -->
-                        <div id="rotationControls-${itemIndex}" class="mt-2 flex justify-center space-x-2" style="display: none;">
+                        <div id="rotationControls-${itemIndex}" class="mt-2 flex flex-wrap justify-center gap-2" style="display: none;">
                             <button type="button" onclick="rotateImage(${itemIndex}, -1)" 
                                     class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-lg text-sm transition-colors">
                                 ↺ Rotate Left
@@ -520,16 +545,17 @@
                     const imagePreviewContainer = document.getElementById(`imagePreviewContainer-${index}`);
                     const imageUploadPrompt = document.getElementById(`imageUploadPrompt-${index}`);
                     
+                    // Set image source and ensure proper mobile display
                     imagePreview.src = correctedImageData;
                     imagePreview.style.transform = 'rotate(0deg)';
+                    imagePreview.style.maxWidth = '100%';
+                    imagePreview.style.height = 'auto';
+                    
                     imagePreviewContainer.classList.remove('hidden');
-                    imageUploadPrompt.classList.add('hidden');
+                    imageUploadPrompt.style.display = 'none';
                     
                     // Show rotation controls
-                    const rotationControls = document.getElementById(`rotationControls-${index}`);
-                    if (rotationControls) {
-                        rotationControls.style.display = 'block';
-                    }
+                    document.getElementById(`rotationControls-${index}`).style.display = 'flex';
                 });
             }
         }
@@ -1025,99 +1051,132 @@
             
             yPos += 5;
             
-            // FRAME DETAILS section header
-            doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-            doc.rect(10, yPos, leftContentWidth, 6, 'F');
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-            doc.text('FRAME DETAILS', 70 - doc.getTextWidth('FRAME DETAILS') / 2, yPos + 4);
-            
-            yPos += 6;
-            
-            // Items section - using first item data
-            const firstItem = data.items[0] || {};
-            
-            yPos = drawFormRow('Artist', firstItem.artist, yPos);
-            yPos = drawFormRow('Title', firstItem.title, yPos);
-            yPos = drawFormRow('Image type', firstItem.imageType, yPos);
-            yPos = drawFormRow('Media', firstItem.media, yPos);
-            yPos = drawFormRow('Size', firstItem.size, yPos);
-            
-            // Framed field with checkbox layout (matching template exactly)
-            const framedY = yPos;
-            doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.rect(10, framedY, leftContentWidth, fieldHeight);
-            doc.line(10 + labelWidth, framedY, 10 + labelWidth, framedY + fieldHeight);
-            
-            // Label
-            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.rect(10, framedY, labelWidth, fieldHeight, 'F');
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(8);
-            doc.setTextColor(255, 255, 255);
-            doc.text('Framed', 12, framedY + 4.5);
-            
-            // Checkboxes (positioned like template)
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(0, 0, 0);
-            const checkboxSize = 3;
-            const checkboxY = framedY + 2;
-            
-            // Framed checkbox
-            doc.rect(53, checkboxY, checkboxSize, checkboxSize);
-            if (firstItem.framed) {
-                doc.setFillColor(0, 0, 0);
-                doc.rect(53, checkboxY, checkboxSize, checkboxSize, 'F');
+            // Items section - create separate FRAME DETAILS section for each item
+            data.items.forEach((item, index) => {
+                // Check if we need a new page for this item
+                if (yPos > 200) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                // Object number header (like template shows "26.01.A", "26.01.D", etc.)
+                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
+                doc.rect(10, yPos, 190, 6, 'F'); // Full width for object number
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
+                doc.text(`Object No.`, 12, yPos + 4);
+                doc.setFont("helvetica", "normal");
+                doc.text(`${item.objectNumber || `${data.receiptNumber}.${String.fromCharCode(65 + index)}`}`, 45, yPos + 4);
+                
+                yPos += 8;
+                
+                // Current item's image area (positioned for this specific item)
+                const currentImageX = 140;
+                const currentImageY = yPos;
+                const currentImageWidth = 55;
+                const currentImageHeight = 65;
+                
+                // Draw image border for this item
+                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.setLineWidth(1);
+                doc.rect(currentImageX, currentImageY, currentImageWidth, currentImageHeight);
+                
+                // Item fields (only goes to edge of image area)
+                yPos = drawFormRow('Artist', item.artist, yPos);
+                yPos = drawFormRow('Title', item.title, yPos);
+                yPos = drawFormRow('Image type', item.imageType, yPos);
+                yPos = drawFormRow('Media', item.media, yPos);
+                yPos = drawFormRow('Size', item.size, yPos);
+                
+                // FRAME DETAILS header
+                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
+                doc.rect(10, yPos, leftContentWidth, 6, 'F');
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
+                doc.text('FRAME DETAILS', 70 - doc.getTextWidth('FRAME DETAILS') / 2, yPos + 4);
+                
+                yPos += 6;
+                
+                // Framed field with checkbox layout
+                const framedY = yPos;
+                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.rect(10, framedY, leftContentWidth, fieldHeight);
+                doc.line(10 + labelWidth, framedY, 10 + labelWidth, framedY + fieldHeight);
+                
+                // Label
+                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.rect(10, framedY, labelWidth, fieldHeight, 'F');
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8);
                 doc.setTextColor(255, 255, 255);
-                doc.setFontSize(6);
-                doc.text('✓', 53.5, checkboxY + 2.5);
-            }
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(8);
-            doc.text('Framed', 58, checkboxY + 2.5);
+                doc.text('Framed', 12, framedY + 4.5);
+                
+                // Checkboxes
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(0, 0, 0);
+                const checkboxSize = 3;
+                const checkboxY = framedY + 2;
+                
+                // Framed checkbox
+                doc.rect(53, checkboxY, checkboxSize, checkboxSize);
+                if (item.framed) {
+                    doc.setFillColor(0, 0, 0);
+                    doc.rect(53, checkboxY, checkboxSize, checkboxSize, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(6);
+                    doc.text('✓', 53.5, checkboxY + 2.5);
+                }
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(8);
+                doc.text('Framed', 58, checkboxY + 2.5);
+                
+                // Unframed checkbox
+                doc.rect(85, checkboxY, checkboxSize, checkboxSize);
+                if (!item.framed) {
+                    doc.setFillColor(0, 0, 0);
+                    doc.rect(85, checkboxY, checkboxSize, checkboxSize, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(6);
+                    doc.text('✓', 85.5, checkboxY + 2.5);
+                }
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(8);
+                doc.text('Unframed', 90, checkboxY + 2.5);
+                
+                yPos += fieldHeight;
+                
+                yPos = drawFormRow('Type', item.frameType || '', yPos);
+                
+                // Add this item's image
+                if (item.imageData) {
+                    try {
+                        doc.addImage(item.imageData, 'JPEG', currentImageX + 2, currentImageY + 2, currentImageWidth - 4, currentImageHeight - 4);
+                    } catch (e) {
+                        console.error('Error adding image:', e);
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        doc.setTextColor(128, 128, 128);
+                        doc.text('Image Error', currentImageX + 20, currentImageY + 35);
+                    }
+                } else {
+                    // Show placeholder
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(128, 128, 128);
+                    doc.text('No Image', currentImageX + 20, currentImageY + 35);
+                }
+                
+                // Ensure we move past this item's image area
+                yPos = Math.max(yPos + 5, currentImageY + currentImageHeight + 5);
+            });
             
-            // Unframed checkbox
-            doc.rect(85, checkboxY, checkboxSize, checkboxSize);
-            if (!firstItem.framed) {
-                doc.setFillColor(0, 0, 0);
-                doc.rect(85, checkboxY, checkboxSize, checkboxSize, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(6);
-                doc.text('✓', 85.5, checkboxY + 2.5);
-            }
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(8);
-            doc.text('Unframed', 90, checkboxY + 2.5);
-            
-            yPos += fieldHeight;
-            
-            yPos = drawFormRow('Frame Type', firstItem.frameType || 'N/A', yPos);
+            // Add receipt contact info after all items
             yPos = drawFormRow('Receipt by', data.receiptBy, yPos);
             yPos = drawFormRow('Contact', data.receiptTelephone, yPos);
             
-            // Add actual image if available (positioned exactly like template)
-            if (firstItem.imageData) {
-                try {
-                    doc.addImage(firstItem.imageData, 'JPEG', imageX + 2, imageY + 2, imageWidth - 4, imageHeight - 4);
-                } catch (e) {
-                    console.error('Error adding image:', e);
-                    // Show placeholder text if image fails
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    doc.setTextColor(128, 128, 128);
-                    doc.text('Image', imageX + 25, imageY + 35);
-                }
-            } else {
-                // Show placeholder text
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(10);
-                doc.setTextColor(128, 128, 128);
-                doc.text('Image Placeholder', imageX + 10, imageY + 35);
-            }
-            
-            // Move to bottom section for agreements
-            yPos = Math.max(yPos + 10, imageY + imageHeight + 10);
+            yPos += 10;
             
             // AGREED NEXT STEP section (exactly like template)
             doc.setFont("helvetica", "bold");
