@@ -1215,7 +1215,7 @@
                 }
                 
                 // Ensure we move past this item's image area and add spacing
-                yPos = Math.max(yPos + 10, currentImageY + currentImageHeight + 10);
+                yPos = Math.max(yPos + 10, currentImageY + imageHeight + 10);
                 
                 // Add page break if we're getting close to bottom with more items
                 if (index < data.items.length - 1 && yPos > 200) {
