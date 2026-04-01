@@ -806,11 +806,6 @@
                             <p class="text-xl font-bold text-gray-800 mt-1">${item.title || 'Untitled'}</p>
                             ${item.artist ? `<p class="text-gray-600">by ${item.artist}</p>` : ''}
                         </div>
-                        ${item.imageData ? `
-                            <div class="ml-4 flex-shrink-0">
-                                <img src="${item.imageData}" alt="Item image" class="receipt-image">
-                            </div>
-                        ` : ''}
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1229,6 +1224,7 @@
             yPos += 8;
             
             // Agreement items
+            const firstItem = data.items[0] || {};
             const agreements = [
                 { key: 'assess', text: 'To assess the work and to provide a condition and proposed treatment report and full costings of same' },
                 { key: 'conserve', text: 'To conserve the work at an agreed price' },
