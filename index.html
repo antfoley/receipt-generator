@@ -484,17 +484,26 @@
                                 <span class="text-sm text-gray-700">To assess the work and to provide a condition and proposed treatment report and full costing of the same</span>
                             </label>
                             <label class="flex items-start">
-                                <input type="checkbox" id="conserve-${itemIndex}" class="mr-2 mt-1">
+                                <input type="checkbox" id="conserve-${itemIndex}" class="mr-2 mt-1" onchange="togglePriceInput('conservePrice-${itemIndex}', this.checked)">
                                 <span class="text-sm text-gray-700">To conserve the work at an agreed price</span>
                             </label>
+                            <div id="conservePrice-${itemIndex}" class="hidden ml-6 mt-1">
+                                <input type="text" id="conservePriceVal-${itemIndex}" placeholder="Enter agreed price (€)" class="border border-gray-300 rounded px-2 py-1 text-sm w-48">
+                            </div>
                             <label class="flex items-start">
-                                <input type="checkbox" id="mount-${itemIndex}" class="mr-2 mt-1">
+                                <input type="checkbox" id="mount-${itemIndex}" class="mr-2 mt-1" onchange="togglePriceInput('mountPrice-${itemIndex}', this.checked)">
                                 <span class="text-sm text-gray-700">To mount the work to an agreed cost</span>
                             </label>
+                            <div id="mountPrice-${itemIndex}" class="hidden ml-6 mt-1">
+                                <input type="text" id="mountPriceVal-${itemIndex}" placeholder="Enter agreed cost (€)" class="border border-gray-300 rounded px-2 py-1 text-sm w-48">
+                            </div>
                             <label class="flex items-start">
-                                <input type="checkbox" id="materials-${itemIndex}" class="mr-2 mt-1">
+                                <input type="checkbox" id="materials-${itemIndex}" class="mr-2 mt-1" onchange="togglePriceInput('materialsPrice-${itemIndex}', this.checked)">
                                 <span class="text-sm text-gray-700">Agreed cost of materials</span>
                             </label>
+                            <div id="materialsPrice-${itemIndex}" class="hidden ml-6 mt-1">
+                                <input type="text" id="materialsPriceVal-${itemIndex}" placeholder="Enter cost (€)" class="border border-gray-300 rounded px-2 py-1 text-sm w-48">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -536,6 +545,18 @@
                 frameTypeContainer.style.display = 'block';
             } else {
                 frameTypeContainer.style.display = 'none';
+            }
+        }
+
+        function togglePriceInput(containerId, show) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.classList.toggle('hidden', !show);
+                if (!show) {
+                    // Clear value when unchecked
+                    const input = container.querySelector('input[type=text]');
+                    if (input) input.value = '';
+                }
             }
         }
 
@@ -950,8 +971,11 @@
                     frameType: document.getElementById(`frameType-${itemIndex}`)?.value || '',
                     assess: document.getElementById(`assess-${itemIndex}`)?.checked || false,
                     conserve: document.getElementById(`conserve-${itemIndex}`)?.checked || false,
+                    conservePrice: document.getElementById(`conservePriceVal-${itemIndex}`)?.value || '',
                     mount: document.getElementById(`mount-${itemIndex}`)?.checked || false,
+                    mountPrice: document.getElementById(`mountPriceVal-${itemIndex}`)?.value || '',
                     materials: document.getElementById(`materials-${itemIndex}`)?.checked || false,
+                    materialsPrice: document.getElementById(`materialsPriceVal-${itemIndex}`)?.value || '',
                     imageData: imageData[itemIndex] ? imageData[itemIndex] : null
                 });
             });
@@ -982,8 +1006,8 @@
             
             // Colors matching the template exactly
             const brownColor = [127, 81, 0]; // #7F5100 - main brown
-            const lightBrownColor = [159, 127, 63]; // Lighter version of #7F5100
-            const darkBrownColor = [95, 61, 0]; // Darker version of #7F5100
+            const lightBrownColor = [241, 198, 141]; // #F1C68D - light orange for sections
+            const darkBrownColor = [95, 61, 0]; // Darker version for text
             
             // Header - Brown background with white text (exact template match)
             doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
@@ -1067,23 +1091,37 @@
             
             // Items section - create separate FRAME DETAILS section for each item
             data.items.forEach((item, index) => {
-                // Check if we need a new page for this item (more conservative spacing)
-                if (yPos > 180) {
+                // Check if we need a new page for this item (3 items per page)
+                if (yPos > 240) {
                     doc.addPage();
                     yPos = 20;
                 }
                 
-                // Object number header (like template shows "26.01.A", "26.01.D", etc.)
-                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-                doc.rect(10, yPos, fullWidth, 6, 'F'); // Full width for object number
+                // Object number row (plain white background, not in orange bar)
+                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.setLineWidth(0.5);
+                doc.rect(10, yPos, fullWidth, fieldHeight);
+                doc.line(10 + labelWidth, yPos, 10 + labelWidth, yPos + fieldHeight);
+                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+                doc.rect(10, yPos, labelWidth, fieldHeight, 'F');
                 doc.setFont("helvetica", "bold");
-                doc.setFontSize(9);
-                doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-                doc.text(`Object No.`, 12, yPos + 4);
+                doc.setFontSize(8);
+                doc.setTextColor(255, 255, 255);
+                doc.text('Object No.', 12, yPos + 4.5);
                 doc.setFont("helvetica", "normal");
-                doc.text(`${item.objectNumber || `${data.receiptNumber}.${String.fromCharCode(65 + index)}`}`, 45, yPos + 4);
+                doc.setTextColor(0, 0, 0);
+                // Only append letter suffix for multiple items
+                const objectLabel = data.items.length > 1
+                    ? (item.objectNumber || `${data.receiptNumber}.${String.fromCharCode(65 + index)}`)
+                    : (item.objectNumber || data.receiptNumber);
+                doc.text(objectLabel, 12 + labelWidth, yPos + 4.5);
+                yPos += fieldHeight;
                 
-                yPos += 8;
+                // Orange section bar (label only, no object number text inside)
+                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
+                doc.rect(10, yPos, fullWidth, 6, 'F');
+                yPos += 6;
+                yPos += 2;
                 
                 // Current item's image area (positioned responsively)
                 const currentImageX = 10 + contentWithImageWidth + imageMargin;
@@ -1182,15 +1220,24 @@
                         yPos += 4;
                     }
                     if (item.conserve) {
-                        doc.text('✓ Conservation at agreed price', 15, yPos);
+                        const conserveText = item.conservePrice
+                            ? `\u2713 Conservation at agreed price: \u20AC${item.conservePrice}`
+                            : `\u2713 Conservation at agreed price`;
+                        doc.text(conserveText, 15, yPos);
                         yPos += 4;
                     }
                     if (item.mount) {
-                        doc.text('✓ Mounting at agreed cost', 15, yPos);
+                        const mountText = item.mountPrice
+                            ? `\u2713 Mounting at agreed cost: \u20AC${item.mountPrice}`
+                            : `\u2713 Mounting at agreed cost`;
+                        doc.text(mountText, 15, yPos);
                         yPos += 4;
                     }
                     if (item.materials) {
-                        doc.text('✓ Agreed cost of materials', 15, yPos);
+                        const materialsText = item.materialsPrice
+                            ? `\u2713 Agreed cost of materials: \u20AC${item.materialsPrice}`
+                            : `\u2713 Agreed cost of materials`;
+                        doc.text(materialsText, 15, yPos);
                         yPos += 4;
                     }
                 }
@@ -1223,8 +1270,8 @@
                 // Ensure we move past this item's image area and add spacing
                 yPos = Math.max(yPos + 10, currentImageY + imageHeight + 10);
                 
-                // Add page break if we're getting close to bottom with more items
-                if (index < data.items.length - 1 && yPos > 200) {
+                // Add page break if needed with more items
+                if (index < data.items.length - 1 && yPos > 240) {
                     doc.addPage();
                     yPos = 20;
                 }
@@ -1242,8 +1289,10 @@
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7);
             doc.setTextColor(255, 255, 255);
-            doc.text('Address: Unit 64 The Design Tower, Pearse Street, Dublin 2  Telephone: 01-6707984 Mobile 086 2451318', 12, yPos + 5);
-            doc.text('Web: thepaperconservationstudio.ie Email: thepaperconservationstudio@outlook.com', 12, yPos + 11);
+            const line1 = 'Address: Unit 64 The Design Tower, Pearse Street, Dublin 2  Telephone: 01-6707984 Mobile 086 2451318';
+            const line2 = 'Web: thepaperconservationstudio.ie Email: thepaperconservationstudio@outlook.com';
+            doc.text(line1, 10 + (fullWidth / 2) - (doc.getTextWidth(line1) / 2), yPos + 5);
+            doc.text(line2, 10 + (fullWidth / 2) - (doc.getTextWidth(line2) / 2), yPos + 11);
             
             // Generate and share
             const blob = doc.output("blob");
