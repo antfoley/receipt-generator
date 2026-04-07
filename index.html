@@ -441,7 +441,7 @@
                     <div class="mb-4" id="frameType-container-${itemIndex}" style="display: none;">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Frame Type</label>
                         <input id="frameType-${itemIndex}" placeholder="Describe the frame"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-left">
                     </div>
                     
                     <div class="mb-4">
@@ -947,7 +947,7 @@
                 receiptNumber: document.getElementById('receiptNumber').value,
                 receiptDate: document.getElementById('receiptDate').value,
                 customerRef: document.getElementById('customerRef').value,
-                numberOfItems: document.getElementById('numberOfItems').value,
+                numberOfItems: items.length,
                 receiptBy: document.getElementById('receiptBy').value,
                 receiptTelephone: document.getElementById('receiptTelephone').value,
                 clientName: document.getElementById('clientName').value,
@@ -1003,297 +1003,202 @@
             // Create PDF with template-based layout matching the form design
             const doc = new jsPDF();
             let yPos = 15;
-            
-            // Colors matching the template exactly
-            const brownColor = [127, 81, 0]; // #7F5100 - main brown
-            const lightBrownColor = [241, 198, 141]; // #F1C68D - light orange for sections
-            const darkBrownColor = [95, 61, 0]; // Darker version for text
-            
-            // Header - Brown background with white text (exact template match)
-            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-            doc.rect(10, yPos, 190, 12, 'F');
-            
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.setTextColor(255, 255, 255);
-            doc.text("RECEIPT", 15, yPos + 8);
-            doc.text("The Paper Conservation Studio", 135, yPos + 8);
-            
-            yPos += 15;
-            
-            // Main content area - responsive widths
-            const pageWidth = 190; // Total usable page width
-            const imageWidth = 55;
+
+            // Colours
+            const brownColor  = [241, 198, 141]; // #F1C68D — header / footer / section headers
+            const orangeColor = [241, 198, 141]; // #F1C68D — section headers
+            const orangeText  = [95,  61,  0];   // dark brown text on orange
+
+            // Layout constants
+            const pageWidth   = 190;
+            const imageWidth  = 55;
             const imageHeight = 65;
             const imageMargin = 5;
             const fieldHeight = 7;
-            const labelWidth = 40;
-            
-            // Calculate content widths
-            const fullWidth = pageWidth;
+            const labelWidth  = 45;
+            const fullWidth   = pageWidth;
             const contentWithImageWidth = pageWidth - imageWidth - imageMargin;
-            
-            // Helper function to draw a form row (matching exact template styling)
-            function drawFormRow(label, value, yPosition, width = fullWidth) {
-                // Draw border
-                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.setLineWidth(0.5);
-                doc.rect(10, yPosition, width, fieldHeight);
-                doc.line(10 + labelWidth, yPosition, 10 + labelWidth, yPosition + fieldHeight);
-                
-                // Label background (brown)
-                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.rect(10, yPosition, labelWidth, fieldHeight, 'F');
-                
-                // Label text
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(8);
-                doc.setTextColor(255, 255, 255);
-                doc.text(label, 12, yPosition + 4.5);
-                
-                // Value text
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(0, 0, 0);
-                doc.text(value || '', 12 + labelWidth, yPosition + 4.5);
-                
-                return yPosition + fieldHeight;
-            }
-            
-            // Receipt basic fields (top section)
-            yPos = drawFormRow('Receipt No.', data.receiptNumber, yPos);
-            yPos = drawFormRow('Date', data.receiptDate, yPos);
-            yPos = drawFormRow('Customers ref.', data.customerRef, yPos);
-            yPos = drawFormRow('No. of Items', data.numberOfItems.toString(), yPos);
-            yPos = drawFormRow('Receipt by', data.receiptBy, yPos);
-            yPos = drawFormRow('Contact', data.receiptTelephone, yPos);
-            
-            yPos += 2;
-            
-            // CLIENT DETAILS section header
-            doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-            doc.rect(10, yPos, fullWidth, 6, 'F'); // Full width since no image
+            const pageUsable  = 277; // A4 height in mm
+            const marginBot   = 15;  // bottom margin
+
+            // ── HEADER ───────────────────────────────────────────────────────
+            doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
+            doc.rect(10, yPos, fullWidth, 12, 'F');
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-            doc.text('CLIENT DETAILS', 10 + (fullWidth / 2) - (doc.getTextWidth('CLIENT DETAILS') / 2), yPos + 4); // Center on full width
-            
-            yPos += 6;
-            
-            // Client fields (now full width)
-            yPos = drawFormRow('Name of Client', data.clientName, yPos, fullWidth);
-            yPos = drawFormRow('Name of Contact', data.contactName, yPos, fullWidth);
-            yPos = drawFormRow('Address', data.clientAddress, yPos, fullWidth);
-            yPos = drawFormRow('Phone Number', data.clientPhone, yPos, fullWidth);
-            yPos = drawFormRow('Email', data.clientEmail, yPos, fullWidth);
-            
-            yPos += 10;
-            
-            // Items section - create separate FRAME DETAILS section for each item
-            data.items.forEach((item, index) => {
-                // Check if we need a new page for this item (3 items per page)
-                if (yPos > 240) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                
-                // Object number row (plain white background, not in orange bar)
-                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.setLineWidth(0.5);
-                doc.rect(10, yPos, fullWidth, fieldHeight);
-                doc.line(10 + labelWidth, yPos, 10 + labelWidth, yPos + fieldHeight);
-                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.rect(10, yPos, labelWidth, fieldHeight, 'F');
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(8);
-                doc.setTextColor(255, 255, 255);
-                doc.text('Object No.', 12, yPos + 4.5);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(0, 0, 0);
-                // Only append letter suffix for multiple items
-                const objectLabel = data.items.length > 1
-                    ? (item.objectNumber || `${data.receiptNumber}.${String.fromCharCode(65 + index)}`)
-                    : (item.objectNumber || data.receiptNumber);
-                doc.text(objectLabel, 12 + labelWidth, yPos + 4.5);
-                yPos += fieldHeight;
-                
-                // Orange section bar (label only, no object number text inside)
-                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-                doc.rect(10, yPos, fullWidth, 6, 'F');
-                yPos += 6;
-                yPos += 2;
-                
-                // Current item's image area (positioned responsively)
-                const currentImageX = 10 + contentWithImageWidth + imageMargin;
-                const currentImageY = yPos;
-                
-                // Draw image border for this item
-                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.setLineWidth(1);
-                doc.rect(currentImageX, currentImageY, imageWidth, imageHeight);
-                
-                // Item fields (responsive width to accommodate image)
-                yPos = drawFormRow('Artist', item.artist, yPos, contentWithImageWidth);
-                yPos = drawFormRow('Title', item.title, yPos, contentWithImageWidth);
-                yPos = drawFormRow('Image type', item.imageType, yPos, contentWithImageWidth);
-                yPos = drawFormRow('Media', item.media, yPos, contentWithImageWidth);
-                yPos = drawFormRow('Size', item.size, yPos, contentWithImageWidth);
-                
-                // FRAME DETAILS header
-                doc.setFillColor(lightBrownColor[0], lightBrownColor[1], lightBrownColor[2]);
-                doc.rect(10, yPos, contentWithImageWidth, 6, 'F');
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(9);
-                doc.setTextColor(darkBrownColor[0], darkBrownColor[1], darkBrownColor[2]);
-                doc.text('FRAME DETAILS', 10 + (contentWithImageWidth / 2) - (doc.getTextWidth('FRAME DETAILS') / 2), yPos + 4);
-                
-                yPos += 6;
-                
-                // Framed field with checkbox layout
-                const framedY = yPos;
-                doc.setDrawColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.rect(10, framedY, contentWithImageWidth, fieldHeight);
-                doc.line(10 + labelWidth, framedY, 10 + labelWidth, framedY + fieldHeight);
-                
-                // Label
-                doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
-                doc.rect(10, framedY, labelWidth, fieldHeight, 'F');
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(8);
-                doc.setTextColor(255, 255, 255);
-                doc.text('Framed', 12, framedY + 4.5);
-                
-                // Checkboxes
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(0, 0, 0);
-                const checkboxSize = 3;
-                const checkboxY = framedY + 2;
-                
-                // Framed checkbox
-                doc.rect(53, checkboxY, checkboxSize, checkboxSize);
-                if (item.framed) {
-                    doc.setFillColor(0, 0, 0);
-                    doc.rect(53, checkboxY, checkboxSize, checkboxSize, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(6);
-                    doc.text('✓', 53.5, checkboxY + 2.5);
-                }
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(8);
-                doc.text('Framed', 58, checkboxY + 2.5);
-                
-                // Unframed checkbox
-                doc.rect(85, checkboxY, checkboxSize, checkboxSize);
-                if (!item.framed) {
-                    doc.setFillColor(0, 0, 0);
-                    doc.rect(85, checkboxY, checkboxSize, checkboxSize, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(6);
-                    doc.text('✓', 85.5, checkboxY + 2.5);
-                }
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(8);
-                doc.text('Unframed', 90, checkboxY + 2.5);
-                
-                yPos += fieldHeight;
-                
-                yPos = drawFormRow('Type', item.frameType || '', yPos, 125);
-                
-                // AGREED NEXT STEPS for this item
-                yPos += 5;
-                
-                // Check if this item has any agreed steps
-                if (item.assess || item.conserve || item.mount || item.materials) {
+            doc.setFontSize(12);
+            doc.setTextColor(orangeText[0], orangeText[1], orangeText[2]);
+            doc.text("RECEIPT", 15, yPos + 8);
+            doc.text("The Paper Conservation Studio", 200 - 15 - doc.getTextWidth("The Paper Conservation Studio"), yPos + 8);
+            yPos += 15;
+
+            // ── Helper: draw a standard form row (white background, grey border) ──
+            function drawFormRow(label, value, yPosition, width = fullWidth) {
+                doc.setDrawColor(160, 160, 160);
+                doc.setLineWidth(0.3);
+                doc.rect(10, yPosition, width, fieldHeight);
+                if (label) {
+                    doc.line(10 + labelWidth, yPosition, 10 + labelWidth, yPosition + fieldHeight);
                     doc.setFont("helvetica", "bold");
-                    doc.setFontSize(9);
-                    doc.setTextColor(brownColor[0], brownColor[1], brownColor[2]);
-                    doc.text('AGREED NEXT STEPS FOR THIS ITEM:', 12, yPos);
-                    
-                    yPos += 6;
-                    
-                    doc.setFont("helvetica", "normal");
                     doc.setFontSize(8);
                     doc.setTextColor(0, 0, 0);
-                    
-                    if (item.assess) {
-                        doc.text('✓ Assessment and treatment report', 15, yPos);
-                        yPos += 4;
-                    }
-                    if (item.conserve) {
-                        const conserveText = item.conservePrice
-                            ? `\u2713 Conservation at agreed price: \u20AC${item.conservePrice}`
-                            : `\u2713 Conservation at agreed price`;
-                        doc.text(conserveText, 15, yPos);
-                        yPos += 4;
-                    }
-                    if (item.mount) {
-                        const mountText = item.mountPrice
-                            ? `\u2713 Mounting at agreed cost: \u20AC${item.mountPrice}`
-                            : `\u2713 Mounting at agreed cost`;
-                        doc.text(mountText, 15, yPos);
-                        yPos += 4;
-                    }
-                    if (item.materials) {
-                        const materialsText = item.materialsPrice
-                            ? `\u2713 Agreed cost of materials: \u20AC${item.materialsPrice}`
-                            : `\u2713 Agreed cost of materials`;
-                        doc.text(materialsText, 15, yPos);
-                        yPos += 4;
-                    }
+                    doc.text(label, 12, yPosition + 4.5);
                 }
-                
-                // Add this item's image
-                if (item.imageData) {
-                    try {
-                        // Ensure image data is in correct format
-                        let imageDataToUse = item.imageData;
-                        if (!imageDataToUse.startsWith('data:')) {
-                            console.warn('Image data may not be in correct format');
-                        }
-                        
-                        doc.addImage(imageDataToUse, 'JPEG', currentImageX + 2, currentImageY + 2, imageWidth - 4, imageHeight - 4);
-                    } catch (e) {
-                        console.error('Error adding image:', e);
-                        doc.setFont("helvetica", "normal");
-                        doc.setFontSize(8);
-                        doc.setTextColor(128, 128, 128);
-                        doc.text('Image Error', currentImageX + 20, currentImageY + 35);
-                    }
-                } else {
-                    // Show placeholder
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(8);
-                    doc.setTextColor(128, 128, 128);
-                    doc.text('No Image', currentImageX + 20, currentImageY + 35);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(0, 0, 0);
+                const xVal = label ? 12 + labelWidth : 12;
+                const maxW = width - (label ? labelWidth : 0) - 4;
+                const fitted = doc.splitTextToSize(String(value || ''), maxW)[0] || '';
+                doc.text(fitted, xVal, yPosition + 4.5);
+                return yPosition + fieldHeight;
+            }
+
+            // ── Helper: draw an orange section header ─────────────────────────
+            function drawSectionHeader(title, yPosition, width = fullWidth) {
+                doc.setFillColor(orangeColor[0], orangeColor[1], orangeColor[2]);
+                doc.rect(10, yPosition, width, 7, 'F');
+                doc.setDrawColor(160, 160, 160);
+                doc.setLineWidth(0.3);
+                doc.rect(10, yPosition, width, 7);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(orangeText[0], orangeText[1], orangeText[2]);
+                doc.text(title, 12, yPosition + 5);
+                return yPosition + 7;
+            }
+
+            // ── Helper: estimate height of one item block ─────────────────────
+            function estimateItemHeight(item) {
+                let h = 0;
+                h += fieldHeight;          // Object No.
+                h += 7;                    // FRAME DETAILS header
+                h += imageHeight;          // image area (tallest element)
+                // count left-side rows (they sit beside the image so height is covered by imageHeight)
+                // rows that extend below image:
+                const agreedItems = [
+                    item.assess, item.conserve, item.mount, item.materials
+                ].filter(Boolean);
+                if (agreedItems.length > 0) {
+                    h += 3 + 7;            // spacing + AGREED header
+                    h += agreedItems.length * fieldHeight;
                 }
-                
-                // Ensure we move past this item's image area and add spacing
-                yPos = Math.max(yPos + 10, currentImageY + imageHeight + 10);
-                
-                // Add page break if needed with more items
-                if (index < data.items.length - 1 && yPos > 240) {
+                h += 6;                    // bottom spacing
+                return h;
+            }
+
+            // ── Top receipt fields ────────────────────────────────────────────
+            yPos = drawFormRow('Receipt No.',    data.receiptNumber,         yPos);
+            yPos = drawFormRow('Date',           data.receiptDate,           yPos);
+            yPos = drawFormRow('Customers ref.', data.customerRef,           yPos);
+            yPos = drawFormRow('No. of Items',   String(data.numberOfItems), yPos);
+            yPos = drawFormRow('Receipt by',     data.receiptBy,             yPos);
+            yPos = drawFormRow('Contact',        data.receiptTelephone,      yPos);
+            yPos += 2;
+
+            // ── CLIENT DETAILS (orange header) ────────────────────────────────
+            yPos = drawSectionHeader('CLIENT DETAILS', yPos);
+            yPos = drawFormRow('Name of Client',  data.clientName,    yPos, fullWidth);
+            yPos = drawFormRow('Name of Contact', data.contactName,   yPos, fullWidth);
+            yPos = drawFormRow('Address',         data.clientAddress, yPos, fullWidth);
+            yPos = drawFormRow('Phone Number',    data.clientPhone,   yPos, fullWidth);
+            yPos = drawFormRow('Email',           data.clientEmail,   yPos, fullWidth);
+            yPos += 4;
+
+            // ── ITEMS ─────────────────────────────────────────────────────────
+            // Footer height so we know how much space it needs
+            const footerH = 15 + 6; // bar + spacing
+
+            data.items.forEach((item, index) => {
+
+                // Estimate how tall this item block will be
+                const itemH = estimateItemHeight(item);
+
+                // If the item + footer won't fit on this page, start a new page
+                if (yPos + itemH + footerH > pageUsable - marginBot) {
                     doc.addPage();
                     yPos = 20;
                 }
+
+                // ── Object No. ────────────────────────────────────────────────
+                const objectLabel = data.items.length > 1
+                    ? (item.objectNumber || `${data.receiptNumber}${String.fromCharCode(65 + index)}`)
+                    : (item.objectNumber || data.receiptNumber);
+                yPos = drawFormRow('Object No.', objectLabel, yPos);
+
+                // ── FRAME DETAILS (orange header) ─────────────────────────────
+                yPos = drawSectionHeader('FRAME DETAILS', yPos);
+
+                // Reserve image column
+                const currentImageX = 10 + contentWithImageWidth + imageMargin;
+                const currentImageY = yPos;
+
+                doc.setDrawColor(160, 160, 160);
+                doc.setLineWidth(0.3);
+                doc.rect(currentImageX, currentImageY, imageWidth, imageHeight);
+
+                // Artwork fields beside image — only non-empty
+                if (item.artist)    yPos = drawFormRow('Artist',     item.artist,    yPos, contentWithImageWidth);
+                if (item.title)     yPos = drawFormRow('Title',      item.title,     yPos, contentWithImageWidth);
+                if (item.imageType) yPos = drawFormRow('Image type', item.imageType, yPos, contentWithImageWidth);
+                if (item.media)     yPos = drawFormRow('Media',      item.media,     yPos, contentWithImageWidth);
+                if (item.size)      yPos = drawFormRow('Size',       item.size,      yPos, contentWithImageWidth);
+                yPos = drawFormRow('Framed', item.framed ? 'Framed' : 'Unframed', yPos, contentWithImageWidth);
+                if (item.framed && item.frameType) {
+                    yPos = drawFormRow('Frame Type', item.frameType, yPos, contentWithImageWidth);
+                }
+
+                // Move past image
+                yPos = Math.max(yPos, currentImageY + imageHeight + 1);
+
+                // Place image
+                if (item.imageData) {
+                    try {
+                        const fmt = item.imageData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+                        doc.addImage(item.imageData, fmt, currentImageX + 2, currentImageY + 2, imageWidth - 4, imageHeight - 4);
+                    } catch (e) {
+                        doc.setFont("helvetica", "italic");
+                        doc.setFontSize(7);
+                        doc.setTextColor(150, 150, 150);
+                        doc.text('Image error', currentImageX + 4, currentImageY + imageHeight / 2);
+                    }
+                }
+
+                // ── AGREED NEXT STEPS (orange header) — only if ticked ────────
+                const agreedItems = [
+                    item.assess    && 'To assess the work and to provide a condition and treatment report and full costings',
+                    item.conserve  && ('To conserve the work at an agreed price' + (item.conservePrice  ? `: \u20AC${item.conservePrice}`  : '')),
+                    item.mount     && ('To mount the work to an agreed cost'     + (item.mountPrice     ? `: \u20AC${item.mountPrice}`     : '')),
+                    item.materials && ('Agreed cost of materials'                + (item.materialsPrice ? `: \u20AC${item.materialsPrice}` : ''))
+                ].filter(Boolean);
+
+                if (agreedItems.length > 0) {
+                    yPos += 3;
+                    yPos = drawSectionHeader('AGREED NEXT STEPS', yPos);
+                    agreedItems.forEach(txt => {
+                        yPos = drawFormRow('', txt, yPos, fullWidth);
+                    });
+                }
+
+                yPos += 6;
             });
-            
-            // Add receipt contact info after all items
-            yPos += 10;
-            
-            // Footer (exactly like template)
-            yPos += 10;
-            
+
+            // ── FOOTER — push to new page if it won't fit ─────────────────────
+            yPos += 4;
+            if (yPos + footerH > pageUsable - marginBot) {
+                doc.addPage();
+                yPos = 20;
+            }
+
             doc.setFillColor(brownColor[0], brownColor[1], brownColor[2]);
             doc.rect(10, yPos, fullWidth, 15, 'F');
-            
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7);
-            doc.setTextColor(255, 255, 255);
-            const line1 = 'Address: Unit 64 The Design Tower, Pearse Street, Dublin 2  Telephone: 01-6707984 Mobile 086 2451318';
-            const line2 = 'Web: thepaperconservationstudio.ie Email: thepaperconservationstudio@outlook.com';
-            doc.text(line1, 10 + (fullWidth / 2) - (doc.getTextWidth(line1) / 2), yPos + 5);
-            doc.text(line2, 10 + (fullWidth / 2) - (doc.getTextWidth(line2) / 2), yPos + 11);
-            
+            doc.setTextColor(orangeText[0], orangeText[1], orangeText[2]);
+            const line1 = 'Address: Unit 64 The Design Tower, Pearse Street, Dublin 2   Telephone: 01-6707984   Mobile: 086 2451318';
+            const line2 = 'Web: thepaperconservationstudio.ie   Email: thepaperconservationstudio@outlook.com';
+            doc.text(line1, 10 + fullWidth / 2 - doc.getTextWidth(line1) / 2, yPos + 5);
+            doc.text(line2, 10 + fullWidth / 2 - doc.getTextWidth(line2) / 2, yPos + 11);
+
             // Generate and share
             const blob = doc.output("blob");
             showSharingOptions(blob, data.receiptNumber, 'Conservation Receipt', data.clientName);
