@@ -46,9 +46,9 @@
         }
         .image-preview {
             width: 150px;
-            height: 120px;
-            object-fit: cover;
-            object-position: center;
+            height: 150px;
+            object-fit: contain;
+            background: #f3f4f6;
             border-radius: 8px;
             display: block;
             margin: 0 auto;
@@ -58,15 +58,15 @@
         /* Mobile responsive image preview */
         @media (max-width: 768px) {
             .image-preview {
-                width: 120px;
-                height: 100px;
+                width: 130px;
+                height: 130px;
             }
         }
         
         @media (max-width: 480px) {
             .image-preview {
-                width: 100px;
-                height: 80px;
+                width: 110px;
+                height: 110px;
             }
         }
         
@@ -572,13 +572,13 @@
                     const imagePreviewContainer = document.getElementById(`imagePreviewContainer-${index}`);
                     const imageUploadPrompt = document.getElementById(`imageUploadPrompt-${index}`);
                     
-                    // Set image source and ensure proper mobile display
+                    // Set image source — let CSS class handle sizing
                     imagePreview.src = correctedImageData;
                     imagePreview.style.transform = 'rotate(0deg)';
-                    imagePreview.style.width = 'inherit';
-                    imagePreview.style.height = 'inherit';
-                    imagePreview.style.objectFit = 'cover';
-                    imagePreview.style.objectPosition = 'center';
+                    imagePreview.style.width = '';
+                    imagePreview.style.height = '';
+                    imagePreview.style.objectFit = '';
+                    imagePreview.style.objectPosition = '';
                     
                     imagePreviewContainer.classList.remove('hidden');
                     imageUploadPrompt.style.display = 'none';
@@ -1070,8 +1070,8 @@
             // ── Helper: estimate height of one item block ─────────────────────
             function estimateItemHeight(item) {
                 let h = 0;
+                h += 7;                    // OBJECT DETAILS header
                 h += fieldHeight;          // Object No.
-                h += 7;                    // FRAME DETAILS header
                 h += imageHeight;          // image area (tallest element)
                 // count left-side rows (they sit beside the image so height is covered by imageHeight)
                 // rows that extend below image:
@@ -1119,14 +1119,14 @@
                     yPos = 20;
                 }
 
-                // ── Object No. ────────────────────────────────────────────────
+                // ── OBJECT DETAILS (orange header) first ────────────────────
+                yPos = drawSectionHeader('OBJECT DETAILS', yPos);
+
+                // ── Object No. row beneath the header ────────────────────────
                 const objectLabel = data.items.length > 1
                     ? (item.objectNumber || `${data.receiptNumber}${String.fromCharCode(65 + index)}`)
                     : (item.objectNumber || data.receiptNumber);
                 yPos = drawFormRow('Object No.', objectLabel, yPos);
-
-                // ── FRAME DETAILS (orange header) ─────────────────────────────
-                yPos = drawSectionHeader('FRAME DETAILS', yPos);
 
                 // Reserve image column
                 const currentImageX = 10 + contentWithImageWidth + imageMargin;
@@ -1195,7 +1195,7 @@
             doc.setFontSize(7);
             doc.setTextColor(orangeText[0], orangeText[1], orangeText[2]);
             const line1 = 'Address: Unit 64 The Design Tower, Pearse Street, Dublin 2   Telephone: 01-6707984   Mobile: 086 2451318';
-            const line2 = 'Web: thepaperconservationstudio.ie   Email: thepaperconservationstudio@outlook.com';
+            const line2 = 'Web: paperconservationstudio.ie   Email: info@paperconservationstudio.ie';
             doc.text(line1, 10 + fullWidth / 2 - doc.getTextWidth(line1) / 2, yPos + 5);
             doc.text(line2, 10 + fullWidth / 2 - doc.getTextWidth(line2) / 2, yPos + 11);
 
