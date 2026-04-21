@@ -236,6 +236,10 @@
                             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors">
                         📄 Generate PDF Receipt
                     </button>
+                    <button onclick="generateInvoice()" 
+                            class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors">
+                        🧾 Generate Invoice
+                    </button>
                 </div>
             </div>
 
@@ -1206,6 +1210,240 @@
             } catch (error) {
                 console.error('PDF generation error:', error);
                 alert('Error generating PDF: ' + error.message + '. Please check your form data and try again.');
+            }
+        }
+
+        // ── INVOICE GENERATION ────────────────────────────────────────────────
+        async function generateInvoice() {
+            try {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    alert('PDF library not loaded. Please refresh the page and try again.');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const data = collectFormData();
+
+                if (!data.receiptNumber || !data.clientName) {
+                    alert('Please fill in the required fields (Receipt Number and Client Name).');
+                    return;
+                }
+
+                const doc = new jsPDF();
+                let yPos = 15;
+
+                // Colours — same palette as receipt
+                const gold      = [241, 198, 141];   // #F1C68D
+                const darkBrown = [95,  61,  0];      // text on gold
+                const black     = [0,   0,   0];
+                const midGrey   = [160, 160, 160];
+                const lightGrey = [245, 245, 245];
+
+                const pageW    = 190;   // printable width (10mm margins each side)
+                const colL     = 10;    // left edge
+                const pageUsable = 277;
+                const marginBot  = 20;
+
+                // ── HEADER BLOCK ─────────────────────────────────────────────
+                // Gold bar across top
+                doc.setFillColor(gold[0], gold[1], gold[2]);
+                doc.rect(colL, yPos, pageW, 14, 'F');
+
+                // "INVOICE" — large, left side
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(20);
+                doc.setTextColor(darkBrown[0], darkBrown[1], darkBrown[2]);
+                doc.text('INVOICE', colL + 4, yPos + 10);
+
+                // Company details — right side, smaller
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8);
+                const studioName = 'The Paper Conservation Studio';
+                doc.text(studioName, 200 - colL - doc.getTextWidth(studioName), yPos + 5);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                const addrLine  = 'Unit 64 The Design Tower, Trinity Enterprise Centre, Pearse Street, Dublin 2';
+                const addrLine2 = 'D02 R688';
+                const phoneLine = 'Phone: +353 1 670 7984   Mobile: +353 86 245 1318';
+                const webLine   = 'Email: mail@paperconservationstudio.ie   Web: www.paperconservationstudio.ie';
+                doc.text(addrLine,  200 - colL - doc.getTextWidth(addrLine),  yPos + 9);
+                doc.text(addrLine2, 200 - colL - doc.getTextWidth(addrLine2), yPos + 12.5);
+                yPos += 17;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(black[0], black[1], black[2]);
+                doc.text(phoneLine, 200 - colL - doc.getTextWidth(phoneLine), yPos);
+                yPos += 4;
+                doc.text(webLine,   200 - colL - doc.getTextWidth(webLine),   yPos);
+                yPos += 6;
+
+                // ── INVOICE META + BILL TO (two columns) ─────────────────────
+                const colMid = colL + pageW / 2 + 5;  // right column start
+                const colW   = pageW / 2 - 5;
+
+                // Left: Bill To
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(darkBrown[0], darkBrown[1], darkBrown[2]);
+                doc.text('BILL TO', colL, yPos);
+                yPos += 5;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor(black[0], black[1], black[2]);
+                if (data.clientName)    { doc.text(data.clientName,    colL, yPos); yPos += 4.5; }
+                if (data.contactName)   { doc.text(data.contactName,   colL, yPos); yPos += 4.5; }
+                if (data.clientAddress) { doc.text(data.clientAddress, colL, yPos); yPos += 4.5; }
+                if (data.clientPhone)   { doc.text(data.clientPhone,   colL, yPos); yPos += 4.5; }
+                if (data.clientEmail)   { doc.text(data.clientEmail,   colL, yPos); yPos += 4.5; }
+
+                // Right: Invoice details box
+                const detailsY = yPos - (4.5 * ([data.clientName, data.contactName, data.clientAddress, data.clientPhone, data.clientEmail].filter(Boolean).length)) - 5;
+                let rY = detailsY;
+                function metaRow(label, value, y) {
+                    doc.setDrawColor(midGrey[0], midGrey[1], midGrey[2]);
+                    doc.setLineWidth(0.3);
+                    doc.rect(colMid, y, colW, 7);
+                    doc.line(colMid + 40, y, colMid + 40, y + 7);
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    doc.text(label, colMid + 2, y + 4.5);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(String(value || ''), colMid + 42, y + 4.5);
+                    return y + 7;
+                }
+                rY = metaRow('Invoice No.',       data.receiptNumber, rY);
+                rY = metaRow('Date',              data.receiptDate,   rY);
+                rY = metaRow('VAT No.',           '4744313H',         rY);
+                rY = metaRow('Tax Clearance No.', '127725',           rY);
+
+                yPos = Math.max(yPos, rY) + 8;
+
+                // ── ITEMS TABLE ───────────────────────────────────────────────
+                // Table header
+                const descW  = pageW - 30 - 30 - 30;  // Description col
+                const qtyW   = 30;
+                const unitW  = 30;
+                const amtW   = 30;
+                const descX  = colL;
+                const qtyX   = descX + descW;
+                const unitX  = qtyX + qtyW;
+                const amtX   = unitX + unitW;
+                const rowH   = 7;
+
+                // Header row — gold fill
+                doc.setFillColor(gold[0], gold[1], gold[2]);
+                doc.rect(descX, yPos, pageW, rowH, 'F');
+                doc.setDrawColor(midGrey[0], midGrey[1], midGrey[2]);
+                doc.setLineWidth(0.3);
+                doc.rect(descX, yPos, pageW, rowH);
+                doc.line(qtyX, yPos, qtyX, yPos + rowH);
+                doc.line(unitX, yPos, unitX, yPos + rowH);
+                doc.line(amtX, yPos, amtX, yPos + rowH);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+                doc.setTextColor(darkBrown[0], darkBrown[1], darkBrown[2]);
+                doc.text('Description', descX + 2, yPos + 4.8);
+                doc.text('Qty',         qtyX  + 2, yPos + 4.8);
+                doc.text('Unit Price',  unitX + 2, yPos + 4.8);
+                doc.text('Amount',      amtX  + 2, yPos + 4.8);
+                yPos += rowH;
+
+                // Collect line items from all items' agreed steps
+                const lineItems = [];
+                data.items.forEach((item, idx) => {
+                    const objLabel = data.items.length > 1
+                        ? (item.objectNumber || `${data.receiptNumber}${String.fromCharCode(65 + idx)}`)
+                        : (item.objectNumber || data.receiptNumber);
+                    const prefix = data.items.length > 1 ? `[${objLabel}] ` : '';
+
+                    if (item.assess)    lineItems.push({ desc: prefix + 'Conservation assessment, condition and treatment report', qty: 1, price: null });
+                    if (item.conserve)  lineItems.push({ desc: prefix + 'Conservation works', qty: 1, price: parseFloat(item.conservePrice)  || null });
+                    if (item.mount)     lineItems.push({ desc: prefix + 'Mounting works',     qty: 1, price: parseFloat(item.mountPrice)     || null });
+                    if (item.materials) lineItems.push({ desc: prefix + 'Materials',           qty: 1, price: parseFloat(item.materialsPrice) || null });
+                });
+
+                // Draw line item rows
+                let subtotal = 0;
+                const altFill = [249, 244, 237]; // very light gold tint for alternating rows
+                lineItems.forEach((li, i) => {
+                    if (yPos + rowH > pageUsable - marginBot) { doc.addPage(); yPos = 20; }
+                    if (i % 2 === 0) {
+                        doc.setFillColor(altFill[0], altFill[1], altFill[2]);
+                        doc.rect(descX, yPos, pageW, rowH, 'F');
+                    }
+                    doc.setDrawColor(midGrey[0], midGrey[1], midGrey[2]);
+                    doc.setLineWidth(0.3);
+                    doc.rect(descX, yPos, pageW, rowH);
+                    doc.line(qtyX, yPos, qtyX, yPos + rowH);
+                    doc.line(unitX, yPos, unitX, yPos + rowH);
+                    doc.line(amtX, yPos, amtX, yPos + rowH);
+
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    const descFitted = doc.splitTextToSize(li.desc, descW - 4)[0] || '';
+                    doc.text(descFitted,                   descX + 2,  yPos + 4.5);
+                    doc.text(String(li.qty),               qtyX  + 2,  yPos + 4.5);
+                    const priceStr = li.price != null ? `\u20AC${li.price.toFixed(2)}` : 'TBC';
+                    const amtStr   = li.price != null ? `\u20AC${(li.qty * li.price).toFixed(2)}` : 'TBC';
+                    doc.text(priceStr, unitX + 2, yPos + 4.5);
+                    doc.text(amtStr,   amtX  + 2, yPos + 4.5);
+                    if (li.price != null) subtotal += li.qty * li.price;
+                    yPos += rowH;
+                });
+
+                if (lineItems.length === 0) {
+                    // Empty row placeholder
+                    doc.setDrawColor(midGrey[0], midGrey[1], midGrey[2]);
+                    doc.rect(descX, yPos, pageW, rowH);
+                    yPos += rowH;
+                }
+
+                // ── TOTALS ────────────────────────────────────────────────────
+                yPos += 4;
+                const totX   = amtX - 40;  // label column start
+                const totLW  = 40;
+                const vatRate = 0.23;
+                const vat     = subtotal * vatRate;
+                const total   = subtotal + vat;
+
+                function totalsRow(label, value, bold) {
+                    doc.setDrawColor(midGrey[0], midGrey[1], midGrey[2]);
+                    doc.setLineWidth(0.3);
+                    doc.rect(totX, yPos, totLW + amtW, rowH);
+                    doc.line(totX + totLW, yPos, totX + totLW, yPos + rowH);
+                    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(0,0,0);
+                    doc.text(label, totX + 2, yPos + 4.8);
+                    doc.text(value, totX + totLW + 2, yPos + 4.8);
+                    yPos += rowH;
+                }
+
+                totalsRow('Subtotal',    subtotal > 0 ? `\u20AC${subtotal.toFixed(2)}` : 'TBC', false);
+                totalsRow('VAT (23%)',   subtotal > 0 ? `\u20AC${vat.toFixed(2)}`      : 'TBC', false);
+
+                // Gold fill on total row
+                doc.setFillColor(gold[0], gold[1], gold[2]);
+                doc.rect(totX, yPos, totLW + amtW, rowH, 'F');
+                totalsRow('TOTAL DUE',  subtotal > 0 ? `\u20AC${total.toFixed(2)}`    : 'TBC', true);
+
+                // ── FOOTER ────────────────────────────────────────────────────
+                yPos += 10;
+                if (yPos + 15 > pageUsable - marginBot) { doc.addPage(); yPos = 20; }
+                doc.setFillColor(gold[0], gold[1], gold[2]);
+                doc.rect(colL, yPos, pageW, 15, 'F');
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
+                doc.setTextColor(darkBrown[0], darkBrown[1], darkBrown[2]);
+                const fl1 = 'Address: Unit 64 The Design Tower, Pearse Street, Dublin 2   Tel: 01-6707984   Mobile: 086 2451318';
+                const fl2 = 'VAT No. 4744313H   Tax Clearance No. 127725   Web: paperconservationstudio.ie   Email: info@paperconservationstudio.ie';
+                doc.text(fl1, colL + pageW / 2 - doc.getTextWidth(fl1) / 2, yPos + 5);
+                doc.text(fl2, colL + pageW / 2 - doc.getTextWidth(fl2) / 2, yPos + 11);
+
+                // Output
+                const blob = doc.output('blob');
+                const invoiceNum = `INV-${data.receiptNumber}`;
+                showSharingOptions(blob, invoiceNum, 'Invoice', data.clientName);
+
+            } catch (error) {
+                console.error('Invoice generation error:', error);
+                alert('Error generating invoice: ' + error.message);
             }
         }
 
