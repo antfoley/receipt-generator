@@ -1223,7 +1223,6 @@
                 }
 
                 const data = collectFormData();
-
                 if (!data.receiptNumber || !data.clientName) {
                     alert('Please fill in the required fields (Receipt Number and Client Name).');
                     return;
@@ -1231,8 +1230,238 @@
 
                 const {
                     Document, Paragraph, Table, TableRow, TableCell, TextRun,
-                    AlignmentType, WidthType, BorderStyle, ShadingType, Packer, VerticalAlign
+                    AlignmentType, WidthType, BorderStyle, ShadingType, Packer,
+                    VerticalAlign, HeightRule
                 } = docx;
+
+                // ── Colours ───────────────────────────────────────────────────
+                const GOLD       = 'F1C68D';
+                const DARK_BROWN = '5F3D00';
+                const WHITE      = 'FFFFFF';
+                const LIGHT_GOLD = 'FDF4E7';
+                const GREY       = 'A0A0A0';
+
+                // ── Border helpers ────────────────────────────────────────────
+                const noBorder    = { style: BorderStyle.NONE, size: 0, color: 'auto' };
+                const greyBorder  = { style: BorderStyle.SINGLE, size: 4, color: GREY };
+                const noBorders   = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideH: noBorder, insideV: noBorder };
+                const greyBorders = { top: greyBorder, bottom: greyBorder, left: greyBorder, right: greyBorder };
+
+                function cell(children, { shade = WHITE, borders = greyBorders, span, vAlign = VerticalAlign.CENTER, w } = {}) {
+                    const opts = {
+                        shading: { fill: shade, type: ShadingType.CLEAR, color: 'auto' },
+                        borders,
+                        verticalAlign: vAlign,
+                        children,
+                        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+                    };
+                    if (span) opts.columnSpan = span;
+                    if (w)    opts.width = { size: w, type: WidthType.DXA };
+                    return new TableCell(opts);
+                }
+
+                function para(runs, align = AlignmentType.LEFT, spacingBefore = 0, spacingAfter = 0) {
+                    return new Paragraph({
+                        alignment: align,
+                        spacing: { before: spacingBefore, after: spacingAfter, line: 240 },
+                        children: Array.isArray(runs) ? runs : [runs],
+                    });
+                }
+
+                function run(text, { bold = false, size = 16, color = '000000', italic = false } = {}) {
+                    return new TextRun({ text: String(text ?? ''), bold, size, color, italics: italic, font: 'Arial' });
+                }
+
+                // Page width in twips: A4 (11906) minus 720 margins each side = 10466
+                const PW = 10466;
+
+                // ── 1. HEADER BAR ─────────────────────────────────────────────
+                // Gold bar: INVOICE left | company block right
+                const headerTable = new Table({
+                    width: { size: PW, type: WidthType.DXA },
+                    borders: noBorders,
+                    rows: [new TableRow({
+                        height: { value: 700, rule: HeightRule.EXACT },
+                        children: [
+                            cell([para(run('INVOICE', { bold: true, size: 52, color: DARK_BROWN }), AlignmentType.LEFT, 80, 0)],
+                                { shade: GOLD, borders: noBorders, w: PW * 0.38 }),
+                            cell([
+                                para(run('The Paper Conservation Studio', { bold: true, size: 20, color: DARK_BROWN }), AlignmentType.RIGHT, 40, 20),
+                                para(run('Unit 64 The Design Tower, Trinity Enterprise Centre, Pearse Street, Dublin 2', { size: 13, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
+                                para(run('D02 R688   Phone: +353 1 670 7984   Mobile: +353 86 245 1318', { size: 13, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
+                                para(run('Email: mail@paperconservationstudio.ie   Web: www.paperconservationstudio.ie', { size: 13, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 40),
+                            ], { shade: GOLD, borders: noBorders, w: PW * 0.62 }),
+                        ]
+                    })]
+                });
+
+                // ── 2. BILL TO  +  INVOICE META (side by side) ───────────────
+                const metaData = [
+                    ['Invoice No.',        data.receiptNumber],
+                    ['Date',              ''],
+                    ['VAT No.',           '4744313H'],
+                    ['Tax Clearance No.', '127725'],
+                ];
+
+                const billLines = [
+                    data.clientName, data.contactName, data.clientAddress,
+                    data.clientPhone, data.clientEmail
+                ].filter(Boolean);
+
+                const infoRows = Math.max(billLines.length, metaData.length);
+                const infoTableRows = [];
+
+                // Header row: BILL TO (gold) | Invoice No. label | Invoice No. value
+                infoTableRows.push(new TableRow({ children: [
+                    cell([para(run('BILL TO', { bold: true, size: 17, color: DARK_BROWN }))],
+                        { shade: GOLD, borders: greyBorders, w: PW * 0.45 }),
+                    cell([para(run(metaData[0][0], { bold: true, size: 16 }))],
+                        { shade: WHITE, borders: greyBorders, w: PW * 0.28 }),
+                    cell([para(run(metaData[0][1], { size: 16 }))],
+                        { shade: WHITE, borders: greyBorders, w: PW * 0.27 }),
+                ]}));
+
+                for (let i = 1; i < infoRows; i++) {
+                    const leftText = billLines[i - 1] || '';
+                    const [mLabel, mVal] = metaData[i] || ['', ''];
+                    infoTableRows.push(new TableRow({ children: [
+                        cell([para(run(leftText, { size: 16 }))],
+                            { shade: WHITE, borders: greyBorders, w: PW * 0.45 }),
+                        cell([para(run(mLabel, { bold: !!mLabel, size: 16 }))],
+                            { shade: WHITE, borders: greyBorders, w: PW * 0.28 }),
+                        cell([para(run(mVal, { size: 16 }))],
+                            { shade: WHITE, borders: greyBorders, w: PW * 0.27 }),
+                    ]}));
+                }
+
+                const infoTable = new Table({
+                    width: { size: PW, type: WidthType.DXA },
+                    borders: noBorders,
+                    rows: infoTableRows,
+                });
+
+                // ── 3. ITEMS TABLE ────────────────────────────────────────────
+                const lineItems = [];
+                data.items.forEach((item, idx) => {
+                    const objLabel = data.items.length > 1
+                        ? (item.objectNumber || `${data.receiptNumber}${String.fromCharCode(65 + idx)}`)
+                        : (item.objectNumber || data.receiptNumber);
+                    const prefix = data.items.length > 1 ? `[${objLabel}] ` : '';
+                    if (item.assess)    lineItems.push({ desc: prefix + 'Conservation assessment, condition and treatment report', qty: 1, price: null });
+                    if (item.conserve)  lineItems.push({ desc: prefix + 'Conservation works',  qty: 1, price: parseFloat(item.conservePrice)  || null });
+                    if (item.mount)     lineItems.push({ desc: prefix + 'Mounting works',      qty: 1, price: parseFloat(item.mountPrice)     || null });
+                    if (item.materials) lineItems.push({ desc: prefix + 'Materials',           qty: 1, price: parseFloat(item.materialsPrice) || null });
+                });
+
+                // Header row
+                const itemColW = [PW * 0.52, PW * 0.12, PW * 0.18, PW * 0.18];
+                const itemsTableRows = [new TableRow({ children: [
+                    cell([para(run('Description', { bold: true, size: 17, color: DARK_BROWN }))],            { shade: GOLD, borders: greyBorders, w: itemColW[0] }),
+                    cell([para(run('Qty',         { bold: true, size: 17, color: DARK_BROWN }), AlignmentType.CENTER)], { shade: GOLD, borders: greyBorders, w: itemColW[1] }),
+                    cell([para(run('Unit Price',  { bold: true, size: 17, color: DARK_BROWN }), AlignmentType.RIGHT)],  { shade: GOLD, borders: greyBorders, w: itemColW[2] }),
+                    cell([para(run('Amount',      { bold: true, size: 17, color: DARK_BROWN }), AlignmentType.RIGHT)],  { shade: GOLD, borders: greyBorders, w: itemColW[3] }),
+                ]})];
+
+                let subtotal = 0;
+                if (lineItems.length === 0) {
+                    itemsTableRows.push(new TableRow({ children: [
+                        cell([para(run(''))], { shade: WHITE, borders: greyBorders, w: itemColW[0] }),
+                        cell([para(run(''))], { shade: WHITE, borders: greyBorders, w: itemColW[1] }),
+                        cell([para(run(''))], { shade: WHITE, borders: greyBorders, w: itemColW[2] }),
+                        cell([para(run(''))], { shade: WHITE, borders: greyBorders, w: itemColW[3] }),
+                    ]}));
+                } else {
+                    lineItems.forEach((li, i) => {
+                        const shade = i % 2 === 0 ? LIGHT_GOLD : WHITE;
+                        const priceStr = li.price != null ? `\u20AC${li.price.toFixed(2)}` : 'TBC';
+                        const amtStr   = li.price != null ? `\u20AC${(li.qty * li.price).toFixed(2)}` : 'TBC';
+                        if (li.price != null) subtotal += li.qty * li.price;
+                        itemsTableRows.push(new TableRow({ children: [
+                            cell([para(run(li.desc,        { size: 16 }))],                                { shade, borders: greyBorders, w: itemColW[0] }),
+                            cell([para(run(String(li.qty), { size: 16 }), AlignmentType.CENTER)],          { shade, borders: greyBorders, w: itemColW[1] }),
+                            cell([para(run(priceStr,       { size: 16 }), AlignmentType.RIGHT)],           { shade, borders: greyBorders, w: itemColW[2] }),
+                            cell([para(run(amtStr,         { size: 16 }), AlignmentType.RIGHT)],           { shade, borders: greyBorders, w: itemColW[3] }),
+                        ]}));
+                    });
+                }
+
+                const itemsTable = new Table({
+                    width: { size: PW, type: WidthType.DXA },
+                    borders: noBorders,
+                    rows: itemsTableRows,
+                });
+
+                // ── 4. TOTALS (right-aligned block) ───────────────────────────
+                const vatRate = 0.135;
+                const vat     = subtotal * vatRate;
+                const total   = subtotal + vat;
+                const totLW   = PW * 0.22;
+                const totVW   = PW * 0.18;
+                const totSpacerW = PW - totLW - totVW;
+
+                function totRow(label, value, shade = WHITE, bold = false) {
+                    return new TableRow({ children: [
+                        cell([para(run(''))], { shade: WHITE, borders: noBorders, w: totSpacerW }),
+                        cell([para(run(label, { bold, size: 16, color: bold ? DARK_BROWN : '000000' }))],
+                            { shade, borders: greyBorders, w: totLW }),
+                        cell([para(run(value, { bold, size: 16, color: bold ? DARK_BROWN : '000000' }), AlignmentType.RIGHT)],
+                            { shade, borders: greyBorders, w: totVW }),
+                    ]});
+                }
+
+                const totalsTable = new Table({
+                    width: { size: PW, type: WidthType.DXA },
+                    borders: noBorders,
+                    rows: [
+                        totRow('Subtotal',    subtotal > 0 ? `\u20AC${subtotal.toFixed(2)}` : 'TBC'),
+                        totRow('VAT (13.5%)', subtotal > 0 ? `\u20AC${vat.toFixed(2)}`      : 'TBC'),
+                        totRow('TOTAL DUE',   subtotal > 0 ? `\u20AC${total.toFixed(2)}`    : 'TBC', GOLD, true),
+                    ],
+                });
+
+                // ── 5. FOOTER BAR ─────────────────────────────────────────────
+                const footerTable = new Table({
+                    width: { size: PW, type: WidthType.DXA },
+                    borders: noBorders,
+                    rows: [new TableRow({
+                        children: [cell([
+                            para(run('Address: Unit 64 The Design Tower, Pearse Street, Dublin 2   Tel: 01-6707984   Mobile: 086 2451318', { size: 13, color: DARK_BROWN }), AlignmentType.CENTER, 60, 20),
+                            para(run('VAT No. 4744313H   Tax Clearance No. 127725   Web: paperconservationstudio.ie   Email: info@paperconservationstudio.ie', { size: 13, color: DARK_BROWN }), AlignmentType.CENTER, 0, 60),
+                        ], { shade: GOLD, borders: noBorders, w: PW })],
+                    })],
+                });
+
+                // ── Build & download ──────────────────────────────────────────
+                const invoiceDoc = new Document({
+                    sections: [{
+                        properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+                        children: [
+                            headerTable,
+                            new Paragraph({ spacing: { before: 240, after: 0 } }),
+                            infoTable,
+                            new Paragraph({ spacing: { before: 240, after: 0 } }),
+                            itemsTable,
+                            new Paragraph({ spacing: { before: 160, after: 0 } }),
+                            totalsTable,
+                            new Paragraph({ spacing: { before: 240, after: 0 } }),
+                            footerTable,
+                        ],
+                    }],
+                });
+
+                const blob = await Packer.toBlob(invoiceDoc);
+                const url  = URL.createObjectURL(blob);
+                const a    = window.document.createElement('a');
+                a.href     = url;
+                a.download = `invoice-${data.receiptNumber}.docx`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error('Invoice generation error:', error);
+                alert('Error generating invoice: ' + error.message);
+            }
+        }
 
                 const GOLD       = 'F1C68D';
                 const DARK_BROWN = '5F3D00';
@@ -1423,54 +1652,6 @@
                 });
 
                 // ── FOOTER ───────────────────────────────────────────────────
-                const footerTable = new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    borders: noBorders,
-                    rows: [new TableRow({
-                        children: [makeCell(
-                            [
-                                makePara(makeRun('Address: Unit 64 The Design Tower, Pearse Street, Dublin 2   Tel: 01-6707984   Mobile: 086 2451318', { size: 14, color: DARK_BROWN }), AlignmentType.CENTER, { before: 60, after: 30 }),
-                                makePara(makeRun('VAT No. 4744313H   Tax Clearance No. 127725   Web: paperconservationstudio.ie   Email: info@paperconservationstudio.ie', { size: 14, color: DARK_BROWN }), AlignmentType.CENTER, { before: 30, after: 60 }),
-                            ],
-                            GOLD, noBorders
-                        )]
-                    })]
-                });
-
-                // ── BUILD & DOWNLOAD ─────────────────────────────────────────
-                const invoiceDoc = new Document({
-                    sections: [{
-                        properties: {
-                            page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } }
-                        },
-                        children: [
-                            headerTable,
-                            new Paragraph({ spacing: { before: 200, after: 200 } }),
-                            billMetaTable,
-                            new Paragraph({ spacing: { before: 200, after: 200 } }),
-                            itemsTable,
-                            new Paragraph({ spacing: { before: 100, after: 100 } }),
-                            totalsTable,
-                            new Paragraph({ spacing: { before: 200, after: 200 } }),
-                            footerTable,
-                        ]
-                    }]
-                });
-
-                const blob = await Packer.toBlob(invoiceDoc);
-                const url  = URL.createObjectURL(blob);
-                const a    = window.document.createElement('a');
-                a.href     = url;
-                a.download = `invoice-${data.receiptNumber}.docx`;
-                a.click();
-                URL.revokeObjectURL(url);
-
-            } catch (error) {
-                console.error('Invoice generation error:', error);
-                alert('Error generating invoice: ' + error.message);
-            }
-        }
-
         // Sharing functions (same as before)
         function showSharingOptions(pdfBlob, receiptNumber, jobTitle, clientName) {
             const modal = document.createElement('div');
