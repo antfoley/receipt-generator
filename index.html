@@ -1276,26 +1276,40 @@
                 const PW = 10466;
 
                 // ── 1. HEADER BAR ─────────────────────────────────────────────
-                // Gold bar: INVOICE left | company block right
                 const headerTable = new Table({
                     width: { size: PW, type: WidthType.DXA },
                     borders: noBorders,
                     rows: [new TableRow({
-                        height: { value: 700, rule: HeightRule.EXACT },
+                        height: { value: 1000, rule: HeightRule.AT_LEAST },
                         children: [
-                            cell([para(run('INVOICE', { bold: true, size: 52, color: DARK_BROWN }), AlignmentType.LEFT, 80, 0)],
-                                { shade: GOLD, borders: noBorders, w: PW * 0.38 }),
+                            cell([para(run('INVOICE', { bold: true, size: 64, color: DARK_BROWN }), AlignmentType.LEFT, 120, 0)],
+                                { shade: GOLD, borders: noBorders, w: PW * 0.35 }),
                             cell([
-                                para(run('The Paper Conservation Studio', { bold: true, size: 20, color: DARK_BROWN }), AlignmentType.RIGHT, 40, 20),
-                                para(run('Unit 64 The Design Tower, Trinity Enterprise Centre, Pearse Street, Dublin 2', { size: 13, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
-                                para(run('D02 R688   Phone: +353 1 670 7984   Mobile: +353 86 245 1318', { size: 13, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
-                                para(run('Email: mail@paperconservationstudio.ie   Web: www.paperconservationstudio.ie', { size: 13, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 40),
-                            ], { shade: GOLD, borders: noBorders, w: PW * 0.62 }),
+                                para(run('The Paper Conservation Studio', { bold: true, size: 22, color: DARK_BROWN }), AlignmentType.RIGHT, 60, 30),
+                                para(run('Unit 64 The Design Tower, Trinity Enterprise Centre,', { size: 15, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
+                                para(run('Pearse Street, Dublin 2,  D02 R688', { size: 15, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
+                                para(run('Phone: +353 1 670 7984   Mobile: +353 86 245 1318', { size: 15, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
+                                para(run('Email: mail@paperconservationstudio.ie', { size: 15, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 0),
+                                para(run('Web: www.paperconservationstudio.ie', { size: 15, color: DARK_BROWN }), AlignmentType.RIGHT, 0, 60),
+                            ], { shade: GOLD, borders: noBorders, w: PW * 0.65 }),
                         ]
                     })]
                 });
 
-                // ── 2. BILL TO  +  INVOICE META (side by side) ───────────────
+                // ── 2. CLIENT ADDRESS (plain paragraphs, no table, no title) ──
+                const billLines = [
+                    data.clientName, data.contactName, data.clientAddress,
+                    data.clientPhone, data.clientEmail
+                ].filter(Boolean);
+
+                const addressParas = billLines.map(line =>
+                    new Paragraph({
+                        spacing: { before: 0, after: 60, line: 240 },
+                        children: [run(line, { size: 17 })],
+                    })
+                );
+
+                // ── 3. INVOICE DETAILS TABLE (below address) ──────────────────
                 const metaData = [
                     ['Invoice No.',        data.receiptNumber],
                     ['Date',              ''],
@@ -1303,41 +1317,17 @@
                     ['Tax Clearance No.', '127725'],
                 ];
 
-                const billLines = [
-                    data.clientName, data.contactName, data.clientAddress,
-                    data.clientPhone, data.clientEmail
-                ].filter(Boolean);
+                const metaTableRows = metaData.map(([label, value]) =>
+                    new TableRow({ children: [
+                        cell([para(run(label, { bold: true, size: 16 }))],  { shade: WHITE, borders: greyBorders, w: PW * 0.30 }),
+                        cell([para(run(value, { size: 16 }))],              { shade: WHITE, borders: greyBorders, w: PW * 0.70 }),
+                    ]})
+                );
 
-                const infoRows = Math.max(billLines.length, metaData.length);
-                const infoTableRows = [];
-
-                // Header row: BILL TO (gold) | Invoice No. label | Invoice No. value
-                infoTableRows.push(new TableRow({ children: [
-                    cell([para(run('BILL TO', { bold: true, size: 17, color: DARK_BROWN }))],
-                        { shade: GOLD, borders: greyBorders, w: PW * 0.45 }),
-                    cell([para(run(metaData[0][0], { bold: true, size: 16 }))],
-                        { shade: WHITE, borders: greyBorders, w: PW * 0.28 }),
-                    cell([para(run(metaData[0][1], { size: 16 }))],
-                        { shade: WHITE, borders: greyBorders, w: PW * 0.27 }),
-                ]}));
-
-                for (let i = 1; i < infoRows; i++) {
-                    const leftText = billLines[i - 1] || '';
-                    const [mLabel, mVal] = metaData[i] || ['', ''];
-                    infoTableRows.push(new TableRow({ children: [
-                        cell([para(run(leftText, { size: 16 }))],
-                            { shade: WHITE, borders: greyBorders, w: PW * 0.45 }),
-                        cell([para(run(mLabel, { bold: !!mLabel, size: 16 }))],
-                            { shade: WHITE, borders: greyBorders, w: PW * 0.28 }),
-                        cell([para(run(mVal, { size: 16 }))],
-                            { shade: WHITE, borders: greyBorders, w: PW * 0.27 }),
-                    ]}));
-                }
-
-                const infoTable = new Table({
+                const metaTable = new Table({
                     width: { size: PW, type: WidthType.DXA },
                     borders: noBorders,
-                    rows: infoTableRows,
+                    rows: metaTableRows,
                 });
 
                 // ── 3. ITEMS TABLE ────────────────────────────────────────────
@@ -1356,10 +1346,10 @@
                 // Header row
                 const itemColW = [PW * 0.52, PW * 0.12, PW * 0.18, PW * 0.18];
                 const itemsTableRows = [new TableRow({ children: [
-                    cell([para(run('Description', { bold: true, size: 17, color: DARK_BROWN }))],            { shade: GOLD, borders: greyBorders, w: itemColW[0] }),
-                    cell([para(run('Qty',         { bold: true, size: 17, color: DARK_BROWN }), AlignmentType.CENTER)], { shade: GOLD, borders: greyBorders, w: itemColW[1] }),
-                    cell([para(run('Unit Price',  { bold: true, size: 17, color: DARK_BROWN }), AlignmentType.RIGHT)],  { shade: GOLD, borders: greyBorders, w: itemColW[2] }),
-                    cell([para(run('Amount',      { bold: true, size: 17, color: DARK_BROWN }), AlignmentType.RIGHT)],  { shade: GOLD, borders: greyBorders, w: itemColW[3] }),
+                    cell([para(run('Description', { bold: true, size: 17, color: '000000' }))],            { shade: GOLD, borders: greyBorders, w: itemColW[0] }),
+                    cell([para(run('Qty',         { bold: true, size: 17, color: '000000' }), AlignmentType.CENTER)], { shade: GOLD, borders: greyBorders, w: itemColW[1] }),
+                    cell([para(run('Unit Price',  { bold: true, size: 17, color: '000000' }), AlignmentType.RIGHT)],  { shade: GOLD, borders: greyBorders, w: itemColW[2] }),
+                    cell([para(run('Amount',      { bold: true, size: 17, color: '000000' }), AlignmentType.RIGHT)],  { shade: GOLD, borders: greyBorders, w: itemColW[3] }),
                 ]})];
 
                 let subtotal = 0;
@@ -1437,13 +1427,15 @@
                         properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
                         children: [
                             headerTable,
-                            new Paragraph({ spacing: { before: 240, after: 0 } }),
-                            infoTable,
-                            new Paragraph({ spacing: { before: 240, after: 0 } }),
+                            new Paragraph({ spacing: { before: 280, after: 0 } }),
+                            ...addressParas,
+                            new Paragraph({ spacing: { before: 160, after: 0 } }),
+                            metaTable,
+                            new Paragraph({ spacing: { before: 280, after: 0 } }),
                             itemsTable,
                             new Paragraph({ spacing: { before: 160, after: 0 } }),
                             totalsTable,
-                            new Paragraph({ spacing: { before: 240, after: 0 } }),
+                            new Paragraph({ spacing: { before: 280, after: 0 } }),
                             footerTable,
                         ],
                     }],
@@ -1651,7 +1643,6 @@
                     ]
                 });
 
-                // ── FOOTER ───────────────────────────────────────────────────
         // Sharing functions (same as before)
         function showSharingOptions(pdfBlob, receiptNumber, jobTitle, clientName) {
             const modal = document.createElement('div');
